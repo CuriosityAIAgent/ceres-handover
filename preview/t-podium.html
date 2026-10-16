@@ -115,7 +115,6 @@
 @keyframes discIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ---------- the preview's own link (bar, left): see the other variant ---------- */
-.pv-variant { white-space: nowrap; }
 
 /* ================= phone ================= */
 @media (max-width: 700px) {
@@ -180,7 +179,6 @@
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
   /* Preview-only words (reviewer-facing, like the preview notes; never respondent copy). */
   const PV = {
-    toFan: 'Show 9+ cards', toPodium: 'Show up to 8',
     small: 'Your Critical pile has {n} {cards}, so this would not show in the survey. Sample cards stand in.',
     fanForced: 'Above 8 Critical cards the pick runs in the fanned pile: tap 1, 2, 3. Sample cards stand in.',
     podiumForced: 'Up to 8 Critical cards show as tiles on a podium. Sample cards stand in.',
@@ -228,12 +226,8 @@
     }
     OWN = variants
     fanHead = pileLabel
-    if (D.aboveMax === 'fan') {
-      const link = document.createElement('button'); link.type = 'button'; link.className = 'c-link pv-variant'
-      ui.left.appendChild(link); ui.bar.classList.add('link')
-      link.addEventListener('click', () => { mode = mode === 'fan' ? 'podium' : 'fan'; S.held = null; render(true) })
-      OWN.link = link
-    }
+    // v3: no reviewer link to switch to the 9+ version ("Show 9+ cards" read as more cards to choose from); the fanned
+    // pile shows by itself when a reviewer's own Critical pile holds more than 8 cards
   } else {
     // 3.2: its own options, shuffled with a fixed seed
     D.options.forEach((o) => { BY[o.id] = o })
@@ -260,7 +254,6 @@
   /* ---------------- render the variant ---------------- */
   function render(animate) {
     cleanTop()
-    if (OWN.link) OWN.link.textContent = mode === 'fan' ? PV.toPodium : PV.toFan
     ui.previewNote(OWN[mode].note)
     if (mode === 'fan') {
       ui.obj.innerHTML = `<div class="pf${animate && !reduced() ? ' enter' : ''}" id="pf"><div class="fan-head"><span><b>${esc(fanHead)} (${opts().length})</b></span></div></div><p class="sr" id="live" aria-live="polite"></p>`

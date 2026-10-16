@@ -303,7 +303,7 @@
           { id: 'banking', label: 'Everyday banking', hint: 'Current account, cards, payments' },
           { id: 'deposits', label: 'Cash and deposits', hint: 'Time deposits and call accounts' },
           { id: 'insurance', label: 'Life insurance and wrappers', hint: 'Life cover and PPLI, but not pensions' },
-          { id: 'retirement', label: 'Pension and retirement accounts', hint: 'Any pension plan, including VGBL, SIPP and pillar 3a' },
+          { id: 'retirement', label: 'Pension and retirement accounts', hint: 'Local tax-advantaged pension plans' },
           { id: 'crypto', label: 'Crypto and digital assets', hint: 'Bitcoin and ether, directly or through ETPs' },
           { id: 'esg', label: 'ESG investments', hint: 'Sustainable funds and portfolios' },
           { id: 'thematic', label: 'Thematic investments', hint: 'Themes such as AI, healthcare or energy' },
@@ -315,7 +315,7 @@
     {
       id: '2.2a', kind: 'followup', template: 'podium', chapter: 'II', parent: '2.2', title: 'Top 3 products',
       origin: 'Added', originText: 'R9 §2.3', min: 0.4,
-      bridge: 'From your Critical pile.',
+      bridge: 'These are the products in your Critical pile.',
       question: 'Which three products matter most to winning?',
       instruction: 'Pick your top 3, most important first.', notes: [],
       previewCondition: 'Shows only if Critical holds more than 3 cards.',
@@ -536,7 +536,7 @@
         rows: [
           { id: 'banking', label: 'Everyday banking', short: 'Banking', hint: 'Current account, cards, payments', four: true },
           { id: 'mortgage', label: 'Mortgage', short: 'Mortgage', hint: 'Home loans sized for HNW, in their country and abroad', four: true },
-          { id: 'retirement', label: 'Pension and retirement accounts', short: 'Pensions', hint: 'Any pension plan, including VGBL, SIPP and pillar 3a', four: true },
+          { id: 'retirement', label: 'Pension and retirement accounts', short: 'Pensions', hint: 'Local tax-advantaged pension plans', four: true },
           { id: 'insurance', label: 'Life insurance and wrappers', short: 'Insurance', hint: 'Life cover and PPLI, but not pensions', four: true },
           { id: 'alternatives', label: 'Alternatives at lower minimums', short: 'Alternatives', hint: 'Private equity and credit funds', four: false },
         ],
