@@ -1,0 +1,260 @@
+/* Ceres review preview: the shared frame. Copied from mockups/ceres-frame.css (The Ascent's survey-sheet skin plus the
+   Ceres accents, design §2.1), unchanged down to the PREVIEW section except for the italic Source Serif in the font
+   import. Laptop targets 1440x790 and 1280x650; phone 390x660 (below 700px wide). */
+@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Archivo:wght@400;500;600&display=swap");
+
+:root {
+  --paper: #F8F7F4;
+  --ground: #FFFFFF;
+  --ink: #0D0C0B;
+  --ink-2: #262320;
+  --muted: #494540;
+  --rule: #8C857A;
+  --rule-soft: #DDD9D2;
+  --navy: #14233B;
+  --bronze: #7A3E12;
+  --forest: #1F4B3A;
+  --disabled-bg: #E5E2DC;
+  --disabled-ink: #6B6761;
+  /* Ceres accents (ambience only; meaning always carries a label too) */
+  --harvest: #8A6116;
+  --wheat: #D2A94E;
+  --wheat-light: #E6CF9A;
+  --olive: #5B6631;
+  --olive-light: #D5D9BC;
+  --marble: #EFEBE4;
+  --newsprint: #F3EEE3;
+  --amber: #9A5B00;
+
+  --font-display: "Bodoni Moda", "Iowan Old Style", Georgia, serif;
+  --font-text: "Source Serif 4", Georgia, serif;
+  --font-ui: "Archivo", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-text);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ---------- page and frame ---------- */
+.c-page {
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px 0;
+  background:
+    radial-gradient(1200px 500px at 50% 110%, rgba(210,169,78,0.10), transparent 70%),
+    var(--paper);
+}
+.c-frame {
+  width: 720px;
+  min-height: 660px;
+  max-height: calc(100dvh - 40px);
+  background: var(--paper);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  box-shadow: 0 18px 50px rgba(13,12,11,0.10);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.c-frame.stage { width: 1100px; }
+
+/* ---------- rail ---------- */
+.c-rail {
+  height: 46px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--rule-soft);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--muted);
+}
+.c-rail .back { justify-self: start; background: none; border: 0; font: inherit; color: var(--muted); cursor: pointer; padding: 6px 0; }
+.c-rail .back[disabled] { color: var(--rule-soft); cursor: default; }
+.c-rail .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; gap: 10px; }
+.c-rail .numeral { font-family: var(--font-display); color: var(--bronze); letter-spacing: 0.08em; font-size: 14px; }
+.c-rail .chap { letter-spacing: 0.14em; text-transform: uppercase; font-size: 11px; color: var(--ink-2); }
+.c-rail .dots { display: flex; gap: 5px; margin-left: 4px; }
+.c-rail .dots i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--rule); display: block; }
+.c-rail .dots i.on { background: var(--ink); border-color: var(--ink); }
+.c-rail .right { display: flex; align-items: center; gap: 12px; }
+.c-rail .saved { color: var(--forest); font-size: 12px; }
+.c-rail .left-time { font-size: 12px; }
+.c-sheaf { display: block; }
+
+/* ---------- header (question band) ---------- */
+.c-head { padding: 26px 48px 0; flex: none; }
+.c-bridge { font-family: var(--font-text); color: var(--forest); font-size: 19px; line-height: 24px; margin: 0 0 6px; display: flex; gap: 8px; align-items: flex-start; }
+.c-bridge::before { content: ""; width: 16px; height: 2px; background: var(--forest); margin-top: 11px; flex: none; }
+.c-q { font-family: var(--font-text); font-weight: 600; font-size: 30px; line-height: 37px; letter-spacing: -0.005em; margin: 0; text-wrap: balance; }
+.c-i { font-family: var(--font-ui); font-size: 16px; line-height: 21px; color: var(--muted); margin: 8px 0 0; }
+.c-note { font-family: var(--font-ui); font-size: 14px; line-height: 19px; color: var(--muted); margin: 3px 0 0; }
+.c-note.ctx { color: var(--harvest); }
+
+/* ---------- object area ---------- */
+.c-obj { flex: 1; min-height: 0; padding: 18px 48px 0; display: flex; flex-direction: column; }
+
+/* ---------- stage layout: question in a side column ---------- */
+.c-frame.stage .c-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 330px 1fr; }
+.c-frame.stage .c-side { border-right: 1px solid var(--rule-soft); padding: 26px 28px 0 36px; display: flex; flex-direction: column; }
+.c-frame.stage .c-side .c-q { font-size: 26px; line-height: 32px; }
+.c-frame.stage .c-stage { padding: 20px 36px 0; display: flex; flex-direction: column; min-height: 0; }
+
+/* ---------- next ---------- */
+.c-next-bar { flex: none; padding: 14px 48px 18px; display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
+.c-frame.stage .c-next-bar { border-top: 1px solid var(--rule-soft); padding: 12px 36px 14px; }
+.c-next {
+  font-family: var(--font-ui); font-weight: 600; font-size: 15px;
+  min-height: 50px; min-width: 200px; padding: 0 26px;
+  border-radius: 2px; border: 0; cursor: pointer;
+  background: var(--ink); color: var(--paper);
+  transition: background 150ms;
+}
+.c-next[disabled] { background: var(--disabled-bg); color: var(--disabled-ink); cursor: default; }
+.c-link { font-family: var(--font-ui); font-size: 13px; color: var(--muted); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* ---------- mockup chrome (not part of the survey) ---------- */
+.mock-tag {
+  position: fixed; left: 12px; bottom: 10px; z-index: 50;
+  font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--rule); pointer-events: none;
+}
+
+/* the mockup index (bottom right); index.html carries its own copy of these rules */
+.mock-index { position: fixed; right: 14px; bottom: 10px; z-index: 50; display: flex; gap: 12px; align-items: baseline;
+  font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--rule); }
+.mock-index a { color: var(--muted); text-decoration: none; }
+.mock-index a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.mock-index a[aria-current] { color: var(--ink); }
+
+/* ---------- phone (390x660) ---------- */
+@media (max-width: 700px) {
+  .c-page { padding: 0; background: var(--paper); }
+  .c-frame, .c-frame.stage { width: 100%; min-height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+  .c-rail { height: 42px; padding: 0 14px; gap: 8px; }
+  .c-rail .chap { display: none; }
+  .c-rail .left-time { display: none; }
+  .c-head { padding: 16px 20px 0; }
+  .c-q, .c-frame.stage .c-side .c-q { font-size: 22px; line-height: 28px; }
+  .c-i { font-size: 15px; margin-top: 6px; }
+  .c-note { font-size: 13px; line-height: 17px; }
+  .c-obj { padding: 12px 20px 0; }
+  .c-frame.stage .c-body { display: flex; flex-direction: column; }
+  .c-frame.stage .c-side { border-right: 0; padding: 16px 20px 0; flex: none; }
+  .c-frame.stage .c-stage { padding: 10px 20px 0; flex: 1; }
+  .c-next-bar, .c-frame.stage .c-next-bar { padding: 10px 20px 14px; border-top: 0; }
+  .c-next { width: 100%; min-height: 50px; }
+  .mock-tag { display: none; }
+  .mock-index { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
+
+/* =====================================================================================================================
+   PREVIEW: everything below is the review preview's own (banner, frame height, rail extras, hint beside Next, preview
+   notes), plus the shared bits every mockup page carried in its own <style> (focus ring, .sr, .nw, .c-btn2, toast).
+   ===================================================================================================================== */
+:root { --pvb: 20px; }
+
+/* ---------- the preview banner: thin, top, quiet ---------- */
+.pv-banner {
+  height: var(--pvb); flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 0 16px; background: var(--marble); border-bottom: 1px solid var(--rule-soft);
+  font-family: var(--font-ui); font-size: 11px; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; overflow: hidden; position: relative; z-index: 60;
+}
+.pv-b-t { overflow: hidden; text-overflow: ellipsis; }
+.pv-b-r { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pv-id { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.04em; text-transform: none; color: var(--ink-2); }
+.pv-chip {
+  display: inline-block; font-family: var(--font-ui); font-size: 10px; line-height: 13px; letter-spacing: 0.04em; text-transform: none;
+  padding: 0 6px; border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--paper); color: var(--muted);
+  max-width: 420px; overflow: hidden; text-overflow: ellipsis; cursor: default;
+}
+.pv-o-adam { color: var(--bronze); border-color: rgba(122,62,18,0.35); }
+.pv-o-haresh { color: var(--olive); border-color: rgba(91,102,49,0.35); }
+.pv-sens { color: var(--amber); border-color: rgba(154,91,0,0.35); }
+
+/* ---------- page and frame: one height, so Next never moves; the banner is taken out of the budget ---------- */
+.c-page { min-height: calc(100dvh - var(--pvb)); padding: 10px 0; }
+.c-frame { position: relative; height: min(750px, calc(100dvh - var(--pvb) - 20px)); min-height: 0; max-height: none; }
+@media (min-width: 701px) and (max-height: 720px) {
+  .c-page { padding: 8px 0; }
+  .c-frame { height: calc(100dvh - var(--pvb) - 16px); }
+}
+
+/* ---------- rail extras ---------- */
+.c-rail .back[hidden] { display: inline-block; visibility: hidden; }
+.c-rail .dots i.sub { width: 4px; height: 4px; align-self: center; margin-left: -1px; }
+.c-rail .pv-qn { font-size: 12px; color: var(--muted); font-variant-numeric: lining-nums tabular-nums; }
+.c-rail .pv-contents { font-size: 12px; color: var(--muted); text-decoration: none; padding: 6px 0; }
+.c-rail .pv-contents:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- question band: the preview note (when a follow-up fires, where a list comes from) ---------- */
+.pv-note { font-family: var(--font-text); font-style: italic; font-size: 13.5px; line-height: 18px; color: var(--rule); margin: 4px 0 0; }
+
+/* ---------- Next bar: [left links] [the survey's completion rule] [Next, always live] ---------- */
+.pv-bar { gap: 16px; }
+.pv-left { margin-right: auto; display: flex; align-items: center; gap: 16px; }
+.pv-left:empty { display: none; }
+.pv-bar .pv-left + .pv-rule { margin-left: 0; }
+.pv-rule { font-family: var(--font-ui); font-size: 12px; line-height: 16px; color: var(--rule); text-align: right; margin-left: auto; }
+.pv-left:not(:empty) ~ .pv-rule { margin-left: 0; }
+.c-next .pv-lbl { display: block; }
+.c-next .pv-sub { display: none; }
+.c-next:hover { background: #26231F; }
+.c-next:active { transform: translateY(1px); }
+.c-next-bar .c-link { padding: 8px 0; }
+
+/* ---------- shared bits from the mockup pages ---------- */
+.sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0 !important; }
+.nw { white-space: nowrap; }
+button { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+.c-btn2 {
+  font-family: var(--font-ui); font-weight: 600; font-size: 15px;
+  min-height: 50px; padding: 0 24px; border-radius: 2px; cursor: pointer;
+  background: transparent; color: var(--ink); border: 1px solid var(--ink);
+  transition: background 150ms;
+}
+.c-btn2:hover { background: rgba(13,12,11,0.04); }
+.toast {
+  position: absolute; left: 50%; bottom: 88px; z-index: 15; transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+  background: var(--ground); border: 1px solid var(--rule-soft); box-shadow: 0 8px 24px rgba(13,12,11,0.10);
+  padding: 11px 16px; border-radius: 2px; font-family: var(--font-ui); font-size: 14px; color: var(--forest); white-space: nowrap;
+  transition: opacity 200ms, transform 260ms cubic-bezier(.2,.7,.2,1);
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+body.instant *, body.instant *::before, body.instant *::after { animation: none !important; transition: none !important; }
+
+/* ---------- phone ---------- */
+@media (max-width: 700px) {
+  :root { --pvb: 18px; }
+  .pv-banner { padding: 0 10px; gap: 8px; font-size: 9px; letter-spacing: 0.05em; }
+  .pv-b-r .pv-chip { display: none; }
+  .pv-id { font-size: 11px; }
+  .c-page { padding: 0; min-height: calc(100dvh - var(--pvb)); }
+  .c-frame, .c-frame.stage { height: calc(100dvh - var(--pvb)); min-height: 0; max-height: none; }
+  .c-rail .pv-qw { display: none; }
+  .c-rail .pv-qn { font-size: 11.5px; }
+  .c-rail .right { gap: 8px; }
+  .pv-rule { display: none; }
+  /* on a phone the hint rides inside the Next button, so the bar never grows */
+  .pv-bar.pv-incomplete .c-next .pv-sub { display: block; font-weight: 400; font-size: 11px; line-height: 13px; opacity: 0.72; margin-top: 2px; }
+  .pv-bar.link .c-next { flex: 1; min-width: 0; width: auto; }
+  .pv-left { flex: none; }
+  .toast { bottom: 76px; font-size: 13px; white-space: normal; width: calc(100% - 40px); text-align: center; }
+}

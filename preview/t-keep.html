@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-keep: keeping the typed words (two in v2: 1.1 and 1.2), straight after them in chapter I (not a question). Ported
+   from mockups/index.html (renderKeep, keepWords); page-only CSS, the shared frame is untouched. No context note: this
+   is not a question. With two or three words the plaques are drawn larger (.few), so the row does not look empty. */
+.kp-obj { justify-content: center; align-items: center; padding-bottom: 8px; }
+.kp-row { display: flex; gap: 11px; justify-content: center; position: relative; }
+.mini {
+  position: relative; width: 116px; height: 92px; padding: 0 10px; cursor: pointer;
+  background: var(--marble); border: 1.5px solid var(--bronze); border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 6px 14px rgba(13,12,11,0.09), 0 1px 3px rgba(13,12,11,0.07);
+  display: flex; align-items: center; justify-content: center; color: var(--ink);
+  transition: transform 180ms cubic-bezier(.2,.7,.2,1), box-shadow 180ms, border-color 150ms;
+}
+.mini::before { content: ""; position: absolute; inset: 4px; border: 1px solid rgba(122,62,18,0.45); pointer-events: none; }
+.mini .w { font-family: var(--font-display); font-weight: 500; font-size: 21px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; text-shadow: 0 1px 0 rgba(255,255,255,0.8); padding-left: 0.08em; }
+.mini:not([disabled]):hover { transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 12px 22px rgba(13,12,11,0.12), 0 2px 4px rgba(13,12,11,0.08); }
+.mini[disabled] { cursor: default; }
+.mini .w.wrap { white-space: normal; text-align: center; line-height: 1.2; padding-left: 0; }
+.mini .w.any { overflow-wrap: anywhere; }
+.kp-row.choose .mini { border-color: var(--navy); animation: lift 260ms cubic-bezier(.2,.7,.2,1) both; }
+.kp-row.choose .mini:nth-child(2) { animation-delay: 40ms; } .kp-row.choose .mini:nth-child(3) { animation-delay: 80ms; }
+.kp-row.choose .mini:nth-child(4) { animation-delay: 120ms; } .kp-row.choose .mini:nth-child(5) { animation-delay: 160ms; }
+@keyframes lift { 50% { transform: translateY(-5px); } 100% { transform: none; } }
+.kp-row.few { gap: 18px; }
+.kp-row.few .mini { width: 236px; height: 118px; padding: 0 16px; }
+.kp-row.few .mini::before { inset: 5px; }
+.kp-hint { min-height: 21px; }
+.kp-cap { margin: 16px 0 0; min-height: 24px; font-family: var(--font-text); font-style: italic; font-size: 16px; line-height: 24px; color: var(--muted); text-align: center; opacity: 0; transition: opacity 150ms; }
+.kp-cap.on { opacity: 1; }
+.kp-cap b { font-style: normal; font-family: var(--font-display); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.kp-seal { display: flex; align-items: center; justify-content: center; width: 624px; max-width: 100%; margin-top: 8px; visibility: hidden; }
+.kp-seal.on { visibility: visible; }
+.kp-seal .rule { flex: 1; height: 5px; border-top: 1.5px solid var(--bronze); border-bottom: 1px solid var(--bronze); opacity: .85; }
+.kp-seal .rule.l { transform-origin: right center; } .kp-seal .rule.r { transform-origin: left center; }
+.seal { width: 104px; height: 104px; margin: 0 16px; transform: rotate(-8deg); mix-blend-mode: multiply; flex: none; }
+.kp-kept { margin: 12px 0 0; font-family: var(--font-text); font-style: italic; font-size: 19px; color: var(--ink-2); visibility: hidden; }
+.kp-kept.on { visibility: visible; }
+
+/* the bar before the seal: [Change a word] [Keep my words], side by side on the right as in the mockup */
+.kp-two .pv-left { margin-right: 0; }
+.kp-two .pv-rule { display: none; }
+
+@media (max-width: 700px) {
+  .kp-obj { justify-content: flex-start; padding-top: 22px; }
+  .kp-row { flex-wrap: wrap; gap: 10px; width: 100%; }
+  .mini { width: calc((100% - 20px) / 3); height: 76px; padding: 0 6px; }
+  .mini .w { font-size: 17px; }
+  .kp-row.few { gap: 12px; }
+  .kp-row.few .mini { width: calc((100% - 12px) / 2); height: 96px; padding: 0 10px; }
+  .kp-cap { font-size: 14px; line-height: 20px; min-height: 40px; margin-top: 12px; }
+  .kp-seal { margin-top: 4px; }
+  .seal { width: 80px; height: 80px; }
+  .kp-kept { font-size: 17px; margin-top: 8px; }
+  .kp-two .pv-left { flex: 1 1 50%; min-width: 0; }
+  .kp-two .pv-left .c-btn2 { width: 100%; padding: 0 10px; }
+  .kp-two .c-next { flex: 1 1 50%; min-width: 0; width: auto; padding: 0 10px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'keep') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const P = window.CeresPreview
+  const esc = P.esc, glue = P.glue
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const narrow = () => window.matchMedia('(max-width: 700px)').matches
+  const D = step.data
+  let kbd = false
+  window.addEventListener('keydown', () => { kbd = true }, true)
+  window.addEventListener('pointerdown', () => { kbd = false }, true)
+  const focusKb = (el) => { if (kbd && el) el.focus({ preventScroll: true }) }
+
+  function anim(el, kf, o, then) {
+    if (!el || reduce) { if (then) then(); return null }
+    const a = el.animate(kf, Object.assign({ fill: 'backwards' }, o))
+    if (then) a.onfinish = then
+    return a
+  }
+
+  /* ---------------- the words: the reviewer's own from the plaques (1.1, 1.2), else the sample for that slot ---------------- */
+  const plaques = D.from.map((id) => CeresNav.step(id))
+  let usedSample = false
+  const words = D.from.map((id, i) => {
+    const v = CeresNav.answers.get(id)
+    const w = v && typeof v === 'object' ? (v.raw || v.word) : (typeof v === 'string' ? v : '')
+    if (w && String(w).trim()) return String(w)
+    usedSample = true
+    return D.sample[i]
+  })
+  const sentenceWith = (k, w) => plaques[k].question.replace(/_{3,}/, w)
+
+  /* ---------------- the seal (mockups/index.html) ---------------- */
+  const BEADS = Array.from({ length: 40 }, (_, i) => {
+    const a = (i / 40) * Math.PI * 2
+    return `<circle cx="${(50 + Math.cos(a) * 35.6).toFixed(2)}" cy="${(50 + Math.sin(a) * 35.6).toFixed(2)}" r="1.25" fill="#7A3E12" stroke="none"/>`
+  }).join('')
+  const numeral = (CeresNav.chapter(step) || { numeral: 'I' }).numeral
+  function sealSVG() {
+    return `<svg class="seal" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <filter id="ink" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="noise"/>
+          <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -3 0 0 0 2.6" result="wear"/>
+          <feComposite in="SourceGraphic" in2="wear" operator="in" result="worn"/>
+          <feDisplacementMap in="worn" in2="noise" scale="1.4" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+      <g filter="url(#ink)" fill="none" stroke="#7A3E12">
+        <circle cx="50" cy="50" r="47" stroke-width="3.2"/>
+        <circle cx="50" cy="50" r="42.5" stroke-width="1"/>
+        <circle cx="50" cy="50" r="28.5" stroke-width="1"/>
+        ${BEADS}
+        <text x="50" y="61.5" text-anchor="middle" font-family="Bodoni Moda, Georgia, serif" font-weight="500" font-size="30" fill="#7A3E12" stroke="none">${esc(numeral)}</text>
+      </g>
+    </svg>`
+  }
+
+  /* ---------------- the screen ---------------- */
+  // not a question: no band from the frame; the heading and the hint are drawn here, as in the mockup
+  const ui = P.mount(step, { band: false, objClass: 'kp-obj' })
+  let sealed = false, choosing = false
+  const head = document.createElement('div'); head.className = 'c-head'
+  ui.frame.insertBefore(head, ui.obj)
+  const pvLines = () => [
+    usedSample ? CERES_SCRIPT.sampleNote : '',
+    sealed ? `In the survey, Back cannot reach ${words.length === 1 ? 'this word' : `these ${['', 'one', 'two', 'three', 'four', 'five'][words.length] || words.length} words`} from here.` : '',
+  ].filter(Boolean).join(' ')
+  const drawHead = () => {
+    const pv = pvLines()
+    head.innerHTML = `
+      <h1 class="c-q">${glue(D.heading)}</h1>
+      <p class="c-i kp-hint" id="hint" aria-live="polite">${choosing && !sealed ? esc(D.hint) : ''}</p>
+      ${pv ? `<p class="pv-note">${esc(pv)}</p>` : ''}`
+  }
+  drawHead()
+
+  const minis = words.map((w, i) => `<button class="mini" type="button" data-i="${i}" aria-label="${esc(sentenceWith(i, w))} ${esc(D.srSuffix)}"><span class="w">${esc(w)}</span></button>`).join('')
+  ui.obj.innerHTML = `
+    <div class="kp-row${words.length <= 3 ? ' few' : ''}" id="row">${minis}</div>
+    <p class="kp-cap" id="cap" aria-hidden="true"></p>
+    <div class="kp-seal" id="seal"><span class="rule l"></span>${sealSVG()}<span class="rule r"></span></div>
+    <p class="kp-kept" id="kept" role="status"></p>`
+
+  function fitMini(btn) {
+    const w = $('.w', btn); if (!w) return
+    w.classList.remove('wrap', 'any'); w.style.width = ''
+    const few = words.length <= 3
+    let size = few ? (narrow() ? 22 : 30) : (narrow() ? 16 : 19)
+    w.style.fontSize = size + 'px'
+    const max = btn.clientWidth - (narrow() ? 14 : 20)
+    while (w.offsetWidth > max && size > 12) { size -= 0.5; w.style.fontSize = size + 'px' }
+    if (w.offsetWidth <= max) return
+    // a very long word (up to 24 letters) does not fit on one line even small: let it break, as on the plaque
+    // break after the hyphen if there is one; split anywhere only if a part still will not fit
+    w.classList.add('wrap'); w.style.width = max + 'px'
+    const maxH = btn.clientHeight - 14
+    const over = () => w.scrollWidth > max + 1 || w.offsetHeight > maxH
+    while (over() && size > 9) { size -= 0.5; w.style.fontSize = size + 'px' }
+    if (over()) { w.classList.add('any'); size = 12; w.style.fontSize = size + 'px'; while (w.offsetHeight > maxH && size > 9) { size -= 0.5; w.style.fontSize = size + 'px' } }
+  }
+  const relayout = () => $$('.mini').forEach(fitMini)
+  window.addEventListener('resize', relayout)
+  relayout()
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout)
+
+  // hovering or focusing a word shows its sentence, so it is clear which word is which
+  const cap = $('#cap')
+  const showCap = (i) => {
+    if (sealed) return
+    const p = plaques[i].data
+    cap.innerHTML = `${glue(p.pre)} <b>${esc(words[i])}</b>${p.post === '.' ? '.' : ' ' + glue(p.post)}`
+    cap.classList.add('on')
+  }
+  const hideCap = () => cap.classList.remove('on')
+  $$('.mini').forEach((b) => {
+    b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') showCap(+b.dataset.i) })
+    b.addEventListener('pointerleave', hideCap)
+    b.addEventListener('focus', () => showCap(+b.dataset.i))
+    b.addEventListener('blur', hideCap)
+    // a tap on a word opens its plaque; Next and Back there come back here
+    b.onclick = () => {
+      if (sealed) return
+      const id = D.from[+b.dataset.i]
+      window.location.href = CeresNav.href(id) + '&from=keep'
+    }
+  })
+  // the words settle into the row
+  $$('.mini').forEach((m, i) => anim(m, [{ opacity: 0, transform: 'translateY(-12px) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 300, delay: 120 + i * 50, easing: 'cubic-bezier(.2,.7,.2,1)' }))
+
+  /* ---------------- the bar: Change a word + Keep my words, then Next once kept ---------------- */
+  const change = document.createElement('button')
+  change.className = 'c-btn2'; change.type = 'button'; change.id = 'change'; change.textContent = D.change
+  ui.left.appendChild(change)
+  ui.bar.classList.add('kp-two')
+  ui.label(D.keep)
+  ui.status(true)   // "Keep my words" is the survey's own button here; once kept, Next goes on
+  change.onclick = () => {
+    choosing = true
+    const row = $('#row'); row.classList.remove('choose'); void row.offsetWidth; row.classList.add('choose')
+    $('#hint').textContent = D.hint
+    focusKb($$('.mini')[0])
+  }
+
+  function keepWords() {
+    if (sealed) return
+    sealed = true; choosing = false
+    $('#row').classList.remove('choose')
+    hideCap()
+    $$('.mini').forEach((m, i) => { m.disabled = true; m.setAttribute('aria-label', sentenceWith(i, words[i])) })
+    drawHead()
+    const seal = $('#seal'), sv = $('.seal', seal), kept = $('#kept')
+    seal.classList.add('on')
+    anim(sv, [
+      { transform: 'scale(1.9) rotate(-24deg)', opacity: 0 },
+      { transform: 'scale(0.94) rotate(-8deg)', opacity: 1, offset: 0.62 },
+      { transform: 'scale(1) rotate(-8deg)', opacity: 1 },
+    ], { duration: 400, easing: 'cubic-bezier(.4,0,.2,1)' })
+    anim($('#row'), [{ transform: 'none' }, { transform: 'translateY(2px) scale(.996)' }, { transform: 'none' }], { duration: 180, delay: 250, easing: 'ease-out' })
+    $$('.rule', seal).forEach((r) => anim(r, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 300, delay: 330, easing: 'cubic-bezier(.2,.7,.2,1)' }))
+    kept.textContent = D.kept
+    kept.classList.add('on')
+    anim(kept, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 260, delay: 560 })
+    change.remove()
+    ui.bar.classList.remove('kp-two')
+    ui.label()
+    ui.status(true)
+    ui.save({ kept: true })
+    focusKb(ui.next)
+  }
+  // the first press of the primary button keeps the words (the survey's own beat); the next goes on
+  ui.onNext(() => { if (!sealed) { keepWords(); return true } return false })
+  focusKb(ui.next)
+})()
+</script>
+</body>
+</html>

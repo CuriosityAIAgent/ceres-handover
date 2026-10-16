@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-break: the chapter break card with the chapter map. Ported from mockups/index.html (renderBreak). */
+.c-obj.pv-flat { padding: 0; }
+.brk { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 48px 0; text-align: center; }
+.brk-top { display: flex; align-items: center; gap: 14px; }
+.brk-num { font-family: var(--font-display); font-weight: 500; font-size: 58px; line-height: 1; letter-spacing: 0.08em; color: var(--bronze); }
+.brk-name { margin: 12px 0 0; font-family: var(--font-ui); font-weight: 600; font-size: 14px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink); }
+.brk-line { margin: 12px auto 0; max-width: 500px; font-size: 19px; line-height: 28px; color: var(--ink-2); text-wrap: balance; }
+.brk-min { margin: 10px 0 0; font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+.brk-map { list-style: none; margin: 26px 0 0; padding: 18px 0 0; width: 440px; border-top: 1px solid var(--rule-soft); text-align: left; }
+.brk-map li { display: flex; align-items: baseline; height: 24px; font-size: 15px; color: var(--muted); }
+.brk-map a { display: contents; color: inherit; text-decoration: none; }
+.brk-map a:hover .mname { text-decoration: underline; text-underline-offset: 3px; }
+.brk-map .mn { width: 42px; flex: none; font-family: var(--font-display); font-size: 14px; letter-spacing: 0.06em; color: var(--bronze); opacity: .75; }
+.brk-map .mname { font-family: var(--font-text); }
+.brk-map .lead { flex: 1; margin: 0 10px; border-bottom: 1px dotted var(--rule); transform: translateY(-4px); opacity: .6; }
+.brk-map .mst { font-family: var(--font-ui); font-size: 12px; color: var(--muted); }
+.brk-map li.now { color: var(--ink); }
+.brk-map li.now .mn { opacity: 1; }
+.brk-map li.now .mname { font-weight: 600; }
+.brk-map li.now .mst { color: var(--olive); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; font-size: 11px; }
+.brk-map li.done .mst { color: var(--forest); }
+.brk-map li.done .mname { color: var(--muted); }
+.brk-w2 { margin: 8px auto 0; max-width: 500px; }
+
+@media (min-width: 701px) and (max-height: 720px) {
+  .brk-num { font-size: 50px; }
+  .brk-top svg { width: 14px; height: 42px; }
+  .brk-line { margin-top: 8px; }
+  .brk-map { margin-top: 16px; padding-top: 12px; }
+  .brk-map li { height: 22px; }
+}
+@media (max-width: 700px) {
+  .c-next-bar .c-link { flex: none; }
+  .brk { padding: 4px 20px 0; }
+  .brk-top { gap: 10px; }
+  .brk-top svg { width: 13px; height: 39px; }
+  .brk-num { font-size: 44px; }
+  .brk-name { font-size: 12px; margin-top: 8px; }
+  .brk-line { font-size: 16px; line-height: 22px; margin-top: 8px; }
+  .brk-min { font-size: 12px; margin-top: 6px; }
+  .brk-map { width: 100%; margin-top: 14px; padding-top: 12px; }
+  .brk-map li { height: 21px; font-size: 14px; }
+  .brk-map .mn { width: 42px; font-size: 13px; }
+  .brk-map .mst { font-size: 11.5px; }
+  .brk-w2 { font-size: 12.5px; line-height: 16px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'break') { CeresNav.go(step.id); return }
+  const P = window.CeresPreview
+  const esc = P.esc, glue = P.glue
+  const $ = (s, r) => (r || document).querySelector(s)
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  function anim(el, kf, o) { if (!el || reduce) return null; return el.animate(kf, Object.assign({ fill: 'backwards' }, o)) }
+
+  const c = CeresNav.chapter(step)
+  const n = c.index + 1
+  const ui = P.mount(step, { band: false, objClass: 'pv-flat', later: true })
+
+  // the rail's sheaf grows the new stalk; the finished chapter's stalk ripens (mockup growStalk)
+  const svg = $('.c-sheaf', ui.rail)
+  const gs = svg ? Array.from(svg.querySelectorAll('g')) : []
+  const g = gs[gs.length - 1]
+  if (g) {
+    g.style.transformBox = 'view-box'; g.style.transformOrigin = '60px 33px'
+    anim(g, [{ transform: 'scale(0.05)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 320, delay: 260, easing: 'cubic-bezier(.2,.7,.2,1)' })
+    if (gs.length > 1) anim(gs[gs.length - 2], [{ opacity: 0.35 }, { opacity: 1 }], { duration: 300, delay: 120 })
+  }
+
+  // the chapter map: ✓ done · now · about N min; each line links to that chapter's break (preview only)
+  const map = CeresNav.chapters.map((ch, i) => {
+    const cls = i < n - 1 ? 'done' : i === n - 1 ? 'now' : ''
+    const M = window.CERES_SCRIPT.ui.mapStates
+    const st = i < n - 1 ? M.done : i === n - 1 ? M.now : CeresNav.fill(M.later, { n: ch.minutes })
+    return `<li class="${cls}"><a href="${CeresNav.href('break-' + ch.numeral)}"><span class="mn">${esc(ch.numeral)}</span><span class="mname">${esc(ch.name)}</span><span class="lead"></span><span class="mst">${st}</span></a></li>`
+  }).join('')
+  // "About 1 minute" (chapter I), "About 10 minutes"
+  const minutesLine = c.minutes === 1 && window.CERES_SCRIPT.ui.breakMinute ? window.CERES_SCRIPT.ui.breakMinute : window.CERES_SCRIPT.ui.breakMinutes
+  const w2 = c.lineWave2 ? `<p class="pv-note brk-w2">Market managers (wave 2, no pay screens) read: “${esc(c.lineWave2)}”</p>` : ''
+  ui.obj.innerHTML = `
+    <div class="brk" id="brk">
+      <div class="brk-top">${P.earSVG(16, 48)}<span class="brk-num">${esc(c.numeral)}</span></div>
+      <h1 class="brk-name">${esc(c.name)}</h1>
+      <p class="brk-line">${glue(c.line)}</p>
+      ${w2}
+      <p class="brk-min">${esc(CeresNav.fill(minutesLine, { n: c.minutes }))}</p>
+      <ol class="brk-map" aria-label="Chapter map">${map}</ol>
+    </div>`
+  anim($('#brk'), [{ opacity: 0, transform: 'translateY(28px)' }, { opacity: 1, transform: 'none' }], { duration: 400, easing: 'cubic-bezier(.2,.7,.2,1)' })
+  anim($('.brk-map'), [{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 220 })
+})()
+</script>
+</body>
+</html>

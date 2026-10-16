@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-visual">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-allocate-list: 5.4a, where the clients typed on 5.4 come from. The `allocate` renderer's list layout: typed rows to
+   100 (shares of 100% when data.unit is '%') with a running total; each row also shows its share as clients of 5.4's
+   number ([N]). The row marked `pinned` stays first, the rest are shuffled. The look is the ledger's
+   (mockups/ledger.html: the ruled page, the typed boxes and steppers, the double-ruled footer in Bodoni numerals, the
+   phone bar pinned above the keyboard), on the ledger's stage frame (band in the side column), so nine rows, the
+   bridge and the notes fit a 1280x650 laptop. Page-only CSS. */
+.c-frame.stage .c-stage.al-obj { padding-top: 22px; }
+.pin-total { display: none; }
+
+/* ---------- the page ---------- */
+.sheet {
+  background: var(--ground);
+  border: 1px solid var(--rule-soft);
+  border-radius: 2px;
+  box-shadow: 0 1px 0 var(--rule-soft), 0 10px 30px rgba(13,12,11,0.06);
+  padding: 4px 22px 4px;
+  font-family: var(--font-text);
+}
+.al-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; column-gap: 14px; border-bottom: 1px solid var(--rule-soft); min-height: 44px; padding: 3px 0; }
+.al-row.pin { border-bottom: 3px double var(--rule-soft); }
+/* the row's share as clients of [N] */
+.al-cl { min-width: 92px; text-align: right; font-family: var(--font-ui); font-size: 13px; line-height: 16px; color: var(--muted); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+.al-cl b { font-family: var(--font-display); font-weight: 500; font-size: 16px; color: var(--ink-2); }
+.al-row:first-child { border-top: 0; }
+.al-row.on { background: linear-gradient(90deg, rgba(230,207,154,0.13), rgba(230,207,154,0.13)); }
+.prov { position: relative; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.prov .lbl { font-size: 15px; line-height: 18px; color: var(--ink); background: none; border: 0; padding: 0; text-align: left; font-family: var(--font-text); cursor: default; }
+.prov .hint { font-family: var(--font-ui); font-size: 12px; line-height: 14px; color: var(--muted); margin-top: 1px; }
+.prov .tip { display: none; }
+
+/* a cell: − box + (the ledger's) */
+.cell { display: flex; align-items: center; gap: 3px; }
+.box {
+  display: inline-flex; align-items: center; justify-content: flex-end;
+  height: 30px; width: 58px; padding: 0 8px; border: 1px solid var(--rule); border-radius: 2px; background: var(--ground);
+  transition: border-color 150ms, box-shadow 150ms; cursor: text;
+}
+.box .u { flex: none; margin-left: 3px; font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+.box input {
+  width: 100%; border: 0; padding: 0; margin: 0; background: transparent; outline: none;
+  font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1; color: var(--ink);
+  text-align: right; font-variant-numeric: lining-nums tabular-nums;
+}
+.box:focus-within { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(20,35,59,0.18); }
+.box.filled { border-color: var(--ink-2); }
+.box.no { animation: shake 260ms ease; }
+@keyframes shake { 20% { transform: translateX(-3px) } 50% { transform: translateX(3px) } 80% { transform: translateX(-1px) } }
+.step {
+  width: 26px; height: 26px; border-radius: 2px; border: 1px solid var(--rule-soft); background: var(--paper);
+  font-family: var(--font-ui); font-size: 15px; line-height: 1; color: var(--ink-2); padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color 120ms, border-color 120ms;
+}
+.step:hover { border-color: var(--ink); background: var(--ground); }
+.step:active { background: var(--marble); }
+
+/* the footer: single rule above, double rule below; "72 of 100 placed" */
+.al-foot { display: flex; justify-content: flex-end; align-items: baseline; gap: 6px; border-top: 1px solid var(--ink); border-bottom: 3px double var(--ink); margin-top: -1px; min-height: 42px; padding: 6px 2px 4px;
+  font-family: var(--font-ui); font-size: 14px; color: var(--ink-2); transition: color 200ms; }
+.num { font-family: var(--font-display); font-weight: 500; font-size: 21px; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); transition: color 200ms; }
+.st-ok, .st-ok .num { color: var(--forest) !important; }
+.st-over, .st-over .num { color: var(--amber) !important; }
+.st-mark { display: inline-flex; width: 18px; height: 18px; align-self: center; }
+.al-ft { white-space: nowrap; }   /* one run of text, so "72%" keeps its % and the spaces stay as written */
+.st-quiet, .st-quiet .num { color: var(--muted); }
+
+/* ---------- short laptops (1280x650) ---------- */
+@media (min-width: 701px) and (max-height: 720px) {
+  .c-frame.stage .c-side { padding-top: 18px; }
+  .c-frame.stage .c-side .c-q { font-size: 23px; line-height: 28px; }
+  .c-bridge { font-size: 17px; line-height: 21px; margin-bottom: 4px; }
+  .c-bridge::before { margin-top: 10px; }
+  .c-i { font-size: 15px; line-height: 19px; margin-top: 6px; }
+  .c-note { font-size: 13px; line-height: 17px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; }
+  .c-frame.stage .c-stage.al-obj { padding-top: 12px; }
+  .sheet { padding: 2px 22px 2px; }
+  .al-row { min-height: 38px; padding: 1px 0; }
+  .prov .lbl { font-size: 14.5px; line-height: 17px; }
+  .prov .hint { font-size: 11.5px; line-height: 13px; margin-top: 0; }
+  .box { height: 27px; }
+  .step { height: 24px; width: 24px; }
+  .al-foot { min-height: 34px; padding: 3px 2px 2px; }
+  .num { font-size: 19px; }
+  .c-frame.stage .c-next-bar { padding-top: 10px; padding-bottom: 12px; }
+  .c-next { min-height: 46px; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 700px) {
+  .c-frame.stage .c-side { padding: 12px 18px 0; }
+  .c-frame.stage .c-side .c-q { font-size: 20px; line-height: 25px; }
+  .c-bridge { font-size: 16px; line-height: 20px; margin-bottom: 3px; }
+  .c-bridge::before { margin-top: 9px; }
+  .c-i { font-size: 14px; line-height: 18px; margin-top: 5px; }
+  .c-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .c-note.ctx { margin-top: 3px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .c-frame.stage .c-stage.al-obj { padding: 8px 18px 0; position: relative; }
+  .c-frame.stage .c-next-bar { flex-direction: column; align-items: stretch; gap: 5px; padding: 5px 18px 10px; border-top: 1px solid var(--rule-soft); background: var(--paper); }
+  .pin-total { display: flex; align-items: baseline; justify-content: center; gap: 5px; font-family: var(--font-ui); font-size: 12.5px; color: var(--ink-2); min-height: 22px; white-space: nowrap; }
+  .pin-total .num { font-size: 16px; }
+  .pin-total .st-mark { width: 15px; height: 15px; }
+  .c-next { min-height: 48px; }
+
+  .sheet { padding: 0; border: 0; box-shadow: none; background: transparent; border-top: 3px double var(--ink); }
+  .al-row { min-height: 31px; padding: 0; column-gap: 10px; }
+  .al-cl { display: none; }   /* no room on a phone: the total under the list says it */
+  .prov .lbl { font-size: 14px; line-height: 16px; cursor: pointer; text-decoration: underline dotted #BDB6AA; text-underline-offset: 3px; }
+  .prov .lbl.nohint { text-decoration: none; cursor: default; }
+  .prov .hint { display: none; }
+  .prov .tip { position: absolute; z-index: 30; left: 0; top: calc(100% + 2px); width: 250px; background: var(--ink); color: var(--paper); font-family: var(--font-ui); font-size: 12.5px; line-height: 16px; padding: 7px 9px; border-radius: 2px; box-shadow: 0 6px 18px rgba(13,12,11,.18); }
+  .prov.tipon .tip { display: block; }
+  .prov.tipup .tip { top: auto; bottom: calc(100% + 2px); }
+  .step { display: none !important; }
+  .box { height: 26px; width: 66px; }
+  .box input { font-size: 16px; }   /* 16 px: iOS zooms smaller fields on focus */
+  .al-foot { display: none; }
+
+  /* keyboard up: the total and Next ride just above it, the page may scroll (declared exception) */
+  body.kb .c-frame { height: auto; max-height: none; min-height: 0; overflow: visible; }
+  body.kb .c-next-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; box-shadow: 0 -6px 16px rgba(13,12,11,.06); }
+  body.kb .c-stage { padding-bottom: calc(var(--kb, 0px) + 120px) !important; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'allocate-list') { CeresNav.go(step.id); return }   // wrong page for this id: send it to its own
+  const P = window.CeresPreview
+  const D = step.data
+  const TOTAL = D.total || 100
+  const STEP = D.step || 5
+  const PCT = D.unit === '%'
+  const fmtN = (v) => Math.round(v).toLocaleString('en-GB')
+
+  /* [N]: 5.4's number (its sample when 5.4 was not played; the frame then prints the sample note). If the reviewer's
+     own number is 0, 5.4a would not show in the survey: the sample stands in, with a line to say so. */
+  const VN = D.vars && D.vars.N
+  let N = null, nNote = ''
+  if (VN) {
+    const got = CeresNav.answers.get(VN.from)
+    const raw = got && typeof got === 'object' ? got[VN.key] : got
+    const own = raw === undefined || raw === null || raw === '' || isNaN(+raw) ? null : +raw
+    N = own != null && own > 0 ? own : VN.sample
+    if (own != null && !(own > 0)) nNote = `Your answer to ${VN.from} is ${fmtN(own)}, so this would not show in the survey. ${fmtN(VN.sample)} stands in.`
+  }
+  const ui = P.mount(step, { objClass: 'al-obj', stage: true, vars: N != null ? { N: fmtN(N) } : {} })
+  if (nNote) ui.previewNote(nNote)
+  const esc = ui.esc, glue = ui.glue
+  const clientsOf = (pct) => (N != null ? Math.round((pct * N) / TOTAL) : null)
+  const $ = (id) => document.getElementById(id)
+  const phone = () => window.matchMedia('(max-width: 700px)').matches
+
+  /* seeded shuffle (fixed for the preview; per person in the survey) */
+  function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) } return h >>> 0 }
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
+  function shuffle(list, key) { const a = list.slice(), r = rng(hash('ceres-preview') ^ hash(key)); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t } return a }
+  // the pinned row ("Clients we already have") stays first; the rest are shuffled
+  const pinned = D.rows.filter((r) => r.pinned), free = D.rows.filter((r) => !r.pinned)
+  const rows = pinned.concat(D.shuffle ? shuffle(free, D.store || step.id) : free)
+
+  /* state: whole numbers (shares of 100%, or clients of 100); an empty box counts as zero */
+  const S = {}
+  const saved = ui.load()
+  if (saved && typeof saved === 'object') for (const r of rows) if (typeof saved[r.id] === 'number') S[r.id] = saved[r.id]
+  const sum = () => rows.reduce((a, r) => a + (S[r.id] || 0), 0)
+
+  /* ---------------- build ---------------- */
+  ui.obj.innerHTML = `<section class="sheet" aria-label="${esc(step.question)}">
+    <div class="al-rows" id="rows">${rows.map((r) => `
+      <div class="al-row${r.pinned ? ' pin' : ''}" data-r="${r.id}">
+        <div class="prov"><button type="button" class="lbl${r.hint ? '' : ' nohint'}" tabindex="-1">${glue(r.label)}</button>${r.hint ? `<span class="hint">${glue(r.hint)}</span><span class="tip">${glue(r.hint)}</span>` : ''}</div>
+        <div class="cell">
+          <button class="step minus" type="button" tabindex="-1" aria-label="${esc(r.label)}: ${STEP}${PCT ? '%' : ''} fewer">−</button>
+          <label class="box"><input inputmode="numeric" autocomplete="off" maxlength="3" data-row="${r.id}" aria-label="${esc(r.label)}, ${PCT ? 'share in per cent' : 'number of the 100 clients'}">${PCT ? '<span class="u" aria-hidden="true">%</span>' : ''}</label>
+          <button class="step plus" type="button" tabindex="-1" aria-label="${esc(r.label)}: ${STEP}${PCT ? '%' : ''} more">+</button>
+        </div>
+        ${N != null ? '<span class="al-cl" aria-hidden="true"></span>' : ''}
+      </div>`).join('')}
+    </div>
+    <div class="al-foot" id="foot" aria-live="polite"></div>
+  </section>`
+  const pin = document.createElement('div'); pin.className = 'pin-total'; pin.id = 'pin'; pin.setAttribute('aria-hidden', 'true')
+  ui.bar.insertBefore(pin, ui.bar.firstChild)
+  const inputs = Array.from(ui.obj.querySelectorAll('.box input'))
+
+  /* ---------------- typing ---------------- */
+  const clean = (raw) => String(raw).replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  function refuse(input) { const b = input.closest('.box'); b.classList.remove('no'); void b.offsetWidth; b.classList.add('no') }
+  function onType(e) {
+    const input = e.target
+    const prev = input.dataset.prev || ''
+    const s = clean(input.value)
+    const v = s === '' ? null : parseInt(s, 10)
+    if (v != null && v > TOTAL) { input.value = prev; refuse(input); return }
+    input.value = s; input.dataset.prev = s
+    S[input.dataset.row] = v
+    update(); save()
+  }
+  function setVal(input, v) {
+    v = v == null ? null : Math.max(0, Math.min(TOTAL, v))
+    input.value = v == null ? '' : String(v); input.dataset.prev = input.value
+    S[input.dataset.row] = v
+  }
+  function bump(input, d) {
+    const c = S[input.dataset.row]
+    let v = c == null ? (d > 0 ? 0 : null) : c
+    if (v == null) return
+    v += d
+    if (v > TOTAL) { refuse(input); v = TOTAL }
+    setVal(input, Math.max(0, v)); update(); save()
+  }
+  function onKey(e) {
+    const input = e.target
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.altKey) { e.preventDefault(); bump(input, e.key === 'ArrowUp' ? STEP : -STEP) }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const i = inputs.indexOf(input)
+      if (i < inputs.length - 1) inputs[i + 1].focus(); else { input.blur(); if (ui.next) ui.next.focus() }
+    }
+  }
+  /* hold a stepper to repeat */
+  function wireStep(btn) {
+    let t1 = 0, t2 = 0
+    const input = btn.parentElement.querySelector('input')
+    const d = btn.classList.contains('plus') ? STEP : -STEP
+    const stop = () => { clearTimeout(t1); clearInterval(t2) }
+    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); bump(input, d); t1 = setTimeout(() => { t2 = setInterval(() => bump(input, d), 110) }, 420) })
+    ;['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => btn.addEventListener(ev, stop))
+    btn.addEventListener('click', (e) => { if (e.detail === 0) bump(input, d) })
+  }
+
+  function save() {
+    const v = {}
+    for (const r of rows) if (S[r.id] != null) v[r.id] = S[r.id]
+    ui.save(Object.keys(v).length ? v : undefined)
+  }
+
+  /* ---------------- render ---------------- */
+  const TICK = '<svg class="st-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 L10 17 L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  function update() {
+    const n = sum()
+    const cls = n === TOTAL ? 'st-ok' : n > TOTAL ? 'st-over' : n === 0 ? 'st-quiet' : ''
+    // "{n}% of 100% placed · {c} of [N] clients": {c} is the placed share as clients of [N]
+    const c = clientsOf(n)
+    const html = (n === TOTAL ? TICK : '') + '<span class="al-ft">' + esc(CeresNav.fill(D.footer, ui.vars)).replace('{n}', `<span class="num">${n}</span>`)
+      .replace('{c}', c != null ? `<span class="num">${fmtN(c)}</span>` : '{c}') + '</span>'
+    // each row: its share as clients of [N]
+    ui.obj.querySelectorAll('.al-row').forEach((row) => {
+      const cl = row.querySelector('.al-cl'); if (!cl) return
+      const v = S[row.dataset.r]
+      const k = v ? clientsOf(v) : null
+      cl.innerHTML = k != null ? `<b>${fmtN(k)}</b> ${k === 1 ? 'client' : 'clients'}` : ''
+    })
+    const foot = $('foot'); foot.className = 'al-foot ' + cls; foot.innerHTML = html
+    pin.className = 'pin-total ' + cls; pin.innerHTML = html
+    inputs.forEach((i) => i.closest('.box').classList.toggle('filled', i.value !== ''))
+    if (n === TOTAL) ui.status(true); else ui.status(false)   // the deck gives no Next label here: step.rule
+  }
+
+  /* ---------------- phone: hints on tap, the bar above the keyboard ---------------- */
+  function wirePhone() {
+    ui.obj.querySelectorAll('.prov .lbl').forEach((l) => l.addEventListener('click', (e) => {
+      if (!phone() || l.classList.contains('nohint')) return
+      e.stopPropagation()
+      const p = l.parentElement, on = !p.classList.contains('tipon')
+      ui.obj.querySelectorAll('.prov.tipon').forEach((x) => x.classList.remove('tipon', 'tipup'))
+      p.classList.toggle('tipon', on)
+      if (on && p.querySelector('.tip').getBoundingClientRect().bottom > ui.bar.getBoundingClientRect().top - 4) p.classList.add('tipup')
+    }))
+    document.addEventListener('click', () => ui.obj.querySelectorAll('.prov.tipon').forEach((x) => x.classList.remove('tipon')))
+    const vv = window.visualViewport
+    const bar = ui.bar
+    const keepVisible = () => {
+      if (!vv || !document.body.classList.contains('kb')) return
+      const a = document.activeElement
+      if (!a || a.tagName !== 'INPUT') return
+      const row = a.closest('.al-row') || a
+      const r = row.getBoundingClientRect(), b = bar.getBoundingClientRect()
+      const top = vv.offsetTop + 6, bottom = b.top - 6
+      if (r.bottom > bottom) window.scrollBy(0, r.bottom - bottom)
+      else if (r.top < top) window.scrollBy(0, r.top - top)
+    }
+    const pinBar = () => {
+      if (!vv) return
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      const up = phone() && kb > 80
+      document.body.classList.toggle('kb', up)
+      document.documentElement.style.setProperty('--kb', up ? kb + 'px' : '0px')
+      bar.style.transform = up ? `translateY(${-kb}px)` : ''
+      if (up) keepVisible()
+      else if (window.scrollY) window.scrollTo(0, 0)
+    }
+    if (vv) { vv.addEventListener('resize', pinBar); vv.addEventListener('scroll', pinBar) }
+    document.addEventListener('focusin', () => requestAnimationFrame(keepVisible))
+  }
+
+  /* ---------------- boot ---------------- */
+  inputs.forEach((i) => {
+    i.addEventListener('input', onType); i.addEventListener('keydown', onKey)
+    i.addEventListener('focus', () => i.closest('.al-row').classList.add('on'))
+    i.addEventListener('blur', () => i.closest('.al-row').classList.remove('on'))
+    setVal(i, S[i.dataset.row] != null ? S[i.dataset.row] : null)
+  })
+  ui.obj.querySelectorAll('.step').forEach(wireStep)
+  ui.obj.querySelectorAll('.box').forEach((b) => b.addEventListener('mousedown', (e) => { if (e.target === b) { e.preventDefault(); b.querySelector('input').focus() } }))
+  wirePhone()
+  update()
+})()
+</script>
+</body>
+</html>

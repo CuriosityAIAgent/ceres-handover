@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres · review preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* The review contents page: the landing page. The only page allowed to scroll, and only inside the list. */
+.ix-page { height: calc(100dvh - var(--pvb)); display: flex; justify-content: center; padding: 10px 0;
+  background: radial-gradient(1200px 500px at 50% 110%, rgba(210,169,78,0.10), transparent 70%), var(--paper); }
+.ix-frame { width: 940px; max-width: calc(100vw - 40px); height: min(750px, 100%); display: flex; flex-direction: column; overflow: hidden;
+  background: var(--paper); border: 1px solid var(--rule-soft); border-radius: 4px; box-shadow: 0 18px 50px rgba(13,12,11,0.10); }
+
+.ix-head { flex: none; display: grid; grid-template-columns: 1fr auto; gap: 8px 40px; align-items: end; padding: 26px 44px 22px; border-bottom: 1px solid var(--rule-soft); }
+.ix-mast { display: flex; align-items: flex-end; gap: 14px; }
+.ix-mast svg { display: block; }
+.ix-name { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 42px; line-height: 1; letter-spacing: 0.32em; color: var(--ink); }
+.ix-sub { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--harvest); margin: 0 0 6px; }
+.ix-intro { grid-column: 1; margin: 14px 0 0; max-width: 600px; font-size: 16.5px; line-height: 25px; color: var(--ink-2); text-wrap: pretty; }
+.ix-act { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.ix-start { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.ix-meta { font-family: var(--font-ui); font-size: 12px; color: var(--muted); text-align: right; line-height: 17px; }
+.ix-meta button { font-size: 12px; }
+
+.ix-list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 44px 28px; scrollbar-width: thin; scrollbar-color: var(--rule-soft) transparent; }
+.ix-ch { display: flex; align-items: baseline; gap: 0; margin: 22px 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--rule-soft); text-decoration: none; color: var(--ink); }
+.ix-ch:first-child { margin-top: 14px; }
+.ix-ch .n { width: 58px; flex: none; font-family: var(--font-display); font-weight: 500; font-size: 20px; letter-spacing: 0.06em; color: var(--bronze); }
+.ix-ch .nm { flex: 1; font-family: var(--font-ui); font-weight: 600; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; }
+.ix-ch .mn { font-family: var(--font-ui); font-size: 12px; color: var(--muted); }
+.ix-ch:hover .nm { text-decoration: underline; text-underline-offset: 4px; }
+
+.ix-row { display: grid; grid-template-columns: 58px 1fr; gap: 0 14px; align-items: baseline; padding: 6px 0; text-decoration: none; color: var(--ink); border-bottom: 1px dotted rgba(140,133,122,0.35); }
+.ix-row:hover { background: rgba(230,207,154,0.18); }
+.ix-row:hover .tx { text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.ix-row .id { font-family: var(--font-display); font-size: 15px; color: var(--ink-2); font-variant-numeric: lining-nums; white-space: nowrap; }
+.ix-row .tx { font-family: var(--font-text); font-size: 15.5px; line-height: 22px; }
+.ix-row .cond { display: block; font-style: italic; font-size: 13px; line-height: 18px; color: var(--rule); }
+.ix-row .br { color: var(--forest); }   /* a step's bridge, before its question, as on the screen (2.1: "those clients") */
+.ix-row .mt { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.ix-row .tpl { font-family: var(--font-ui); font-size: 11px; color: var(--rule); letter-spacing: 0.02em; min-width: 92px; text-align: right; }
+.ix-row .pv-chip { max-width: 230px; vertical-align: baseline; }
+.ix-row.fu { padding-left: 26px; grid-template-columns: 58px 1fr; }
+.ix-row.fu .id { font-size: 14px; color: var(--muted); }
+.ix-row.fu .tx { font-size: 15px; color: var(--ink-2); }
+.ix-row.other .tx { font-style: italic; color: var(--muted); }
+.ix-row.other .id { color: var(--muted); font-size: 13px; }
+
+@media (min-width: 701px) and (max-height: 720px) {
+  .ix-page { padding: 8px 0; }
+  .ix-head { padding: 18px 40px 16px; }
+  .ix-name { font-size: 34px; }
+  .ix-mast svg { width: 11px; height: 33px; }
+  .ix-intro { margin-top: 10px; font-size: 15.5px; line-height: 22px; }
+}
+@media (max-width: 700px) {
+  .ix-page { padding: 0; }
+  .ix-frame { width: 100%; max-width: none; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
+  .ix-head { grid-template-columns: 1fr; padding: 16px 20px 14px; }
+  .ix-name { font-size: 30px; }
+  .ix-mast svg { width: 10px; height: 30px; }
+  .ix-intro { font-size: 14.5px; line-height: 20px; margin-top: 10px; }
+  .ix-act { grid-column: 1; grid-row: 3; margin-top: 4px; flex-direction: row; align-items: center; justify-content: space-between; }
+  .ix-start { flex: 1; max-width: 200px; min-width: 0 !important; }
+  .ix-list { padding: 0 20px 20px; }
+  .ix-row, .ix-row.fu { grid-template-columns: 44px 1fr; }
+  .ix-row.fu { padding-left: 14px; }
+  .ix-row .mt { grid-column: 2; margin-top: 2px; }
+  .ix-row .tpl { min-width: 0; text-align: left; }
+  .ix-ch .n { width: 44px; }
+}
+</style>
+</head>
+<body class="pv pv-index">
+<div class="pv-banner" role="note"><span class="pv-b-t">Review preview · Next always works · nothing is saved</span><span class="pv-b-r"><span class="pv-id">Contents</span></span></div>
+<div class="ix-page">
+  <div class="ix-frame">
+    <header class="ix-head">
+      <div>
+        <div class="ix-mast" id="mast"><h1 class="ix-name">CERES</h1></div>
+      </div>
+      <div class="ix-act">
+        <a class="c-next ix-start" id="start" href="#">Start</a>
+        <div class="ix-meta"><span id="counts"></span><br><button class="c-link" type="button" id="clear">Clear my answers</button></div>
+      </div>
+      <p class="ix-intro">This is a preview of the Ceres survey for review. Every screen is here in order. Next always works and nothing is saved. Follow-ups that only appear after certain answers are shown with a note.</p>
+    </header>
+    <nav class="ix-list" id="list" aria-label="Every step, in order"></nav>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" style="position:fixed"></div>
+<script>
+(function () {
+  'use strict'
+  const N = window.CeresNav, P = window.CeresPreview, S = window.CERES_SCRIPT
+  const esc = P.esc, glue = P.glue
+  const $ = (s) => document.querySelector(s)
+
+  $('#mast').insertAdjacentHTML('afterbegin', P.earSVG(14, 42))
+  $('#start').href = N.href(N.steps[0])
+  const count = (k) => N.steps.filter((s) => s.kind === k).length
+  $('#counts').textContent = `${count('question')} questions · ${count('followup')} follow-ups · ${S.chapters.length} chapters`
+  $('#clear').onclick = () => {
+    N.answers.clearAll()
+    const t = $('#toast'); t.textContent = 'Your preview answers are cleared.'; t.classList.add('on')
+    setTimeout(() => t.classList.remove('on'), 2400)
+  }
+
+  const label = (s) => {
+    if (s.kind === 'welcome') return 'Welcome'
+    if (s.kind === 'pause') return `Pause card: “${s.data.line}”`
+    if (s.kind === 'ending') return 'Ending and contact line'
+    return s.question || s.title
+  }
+  const row = (s) => {
+    const cls = s.kind === 'followup' ? 'fu' : (s.kind === 'question' || s.kind === 'statement') ? '' : 'other'
+    const cond = s.previewCondition ? `<span class="cond">${esc(s.previewCondition)}</span>` : ''
+    const num = s.kind === 'question' || s.kind === 'followup' || s.kind === 'statement' ? s.id : ''
+    const bridge = s.bridge && s.question ? `<span class="br">${glue(s.bridge)}</span> ` : ''
+    return `<a class="ix-row ${cls}" href="${N.href(s)}"><span class="id">${esc(num)}</span><span class="tx">${bridge}${glue(label(s))}${cond}</span></a>`
+  }
+
+  let html = ''
+  let chap = undefined
+  N.steps.forEach((s) => {
+    if (s.kind === 'break') {
+      const c = N.chapter(s)
+      html += `<a class="ix-ch" href="${N.href(s)}"><span class="n">${esc(c.numeral)}</span><span class="nm">${esc(c.name)}</span><span class="mn">about ${c.minutes} min</span></a>`
+      chap = c.numeral
+      return
+    }
+    if (chap === undefined && s.chapter == null && s.kind !== 'ending') {
+      html += `<div class="ix-ch" style="cursor:default"><span class="n"></span><span class="nm">Opening</span><span class="mn"></span></div>`
+      chap = null
+    }
+    if (s.kind === 'ending') html += `<div class="ix-ch" style="cursor:default"><span class="n"></span><span class="nm">Close</span><span class="mn"></span></div>`
+    html += row(s)
+  })
+  $('#list').innerHTML = html
+  // keyboard: Enter starts, Alt+→ too
+  document.addEventListener('keydown', (e) => { if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); N.go(N.steps[0].id) } })
+})()
+</script>
+</body>
+</html>

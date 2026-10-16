@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-visual">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-allocate-ledger: 5.1 (the split, then banking and cash) and 5.2 (investments), the $10mm ledger.
+   Ported from mockups/ledger.html (page-only CSS; the shared frame is untouched). In the preview each half is its own
+   page; 5.2a, the tap-one follow-up, is served by t-checklist.html. */
+.c-frame.stage { width: 1120px; }
+.c-frame.stage .c-body { grid-template-columns: 330px 1fr; }
+.c-frame.stage .c-side { padding: 30px 24px 0 32px; }
+.c-frame.stage .c-side .c-q { font-size: 23px; line-height: 30px; text-wrap: pretty; }
+.c-frame.stage .c-stage { padding: 22px 30px 0 30px; position: relative; }
+.c-side .c-i { margin-top: 12px; }
+.c-side .c-note.ctx { margin-top: 10px; }
+.c-q .x { font-family: var(--font-display); font-weight: 500; font-variant-numeric: lining-nums; }
+.pin-total { display: none; }
+
+/* ---------- the ledger page ---------- */
+.ledger {
+  --cash: var(--ink);
+  --inv: var(--olive);
+  background: var(--ground);
+  border: 1px solid var(--rule-soft);
+  border-radius: 2px;
+  box-shadow: 0 1px 0 var(--rule-soft), 0 10px 30px rgba(13,12,11,0.06);
+  padding: 18px 24px 14px;
+  font-family: var(--font-text);
+}
+.lg-title {
+  font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: 0.18em;
+  text-align: center; color: var(--ink); padding-bottom: 9px;
+  border-bottom: 3px double var(--ink);
+  font-variant-numeric: lining-nums;
+}
+.lg-split {
+  margin: 14px 0 0; font-size: 17.5px; line-height: 34px; color: var(--ink);
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px;
+}
+.lg-split .rest { color: var(--muted); }
+.lg-split.inked .box { border-color: transparent; background: transparent; padding: 0; height: auto; gap: 0; }
+.lg-split.inked .cur, .lg-split.inked .unit { font-family: var(--font-text); font-size: inherit; color: var(--ink); }
+.lg-split.inked input { text-align: center; font-size: 19px; color: var(--ink); -webkit-text-fill-color: var(--ink); opacity: 1; }
+
+/* typed boxes "$[ . ]mm" */
+.box {
+  display: inline-flex; align-items: center; gap: 2px;
+  height: 30px; padding: 0 6px; border: 1px solid var(--rule); border-radius: 2px; background: var(--ground);
+  transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
+  cursor: text;
+}
+.box .cur, .box .unit { font-family: var(--font-ui); font-size: 11.5px; color: var(--muted); }
+.box input {
+  width: 42px; border: 0; padding: 0; margin: 0; background: transparent; outline: none;
+  font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1; color: var(--ink);
+  text-align: right; font-variant-numeric: lining-nums tabular-nums;
+}
+.box input::placeholder { color: var(--rule); opacity: 1; }
+.box:focus-within { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(20,35,59,0.18); }
+.box.filled { border-color: var(--ink-2); }
+.box.no { animation: shake 260ms ease; }
+@keyframes shake { 20% { transform: translateX(-3px) } 50% { transform: translateX(3px) } 80% { transform: translateX(-1px) } }
+.split-box { height: 34px; }
+.split-box.cue { border-color: var(--navy); background: #FFFDF6; box-shadow: 0 0 0 3px rgba(20,35,59,0.07); }
+.split-box.cue:focus-within { box-shadow: 0 0 0 2px rgba(20,35,59,0.18); }
+.split-box input { width: 44px; font-size: 20px; }
+
+/* the grid */
+.lg-grid { margin-top: 10px; display: grid; grid-template-columns: 1fr 170px 120px 88px; }
+.lg-grid[data-active="inv"] { grid-template-columns: 1fr 120px 170px 88px; }
+.lg-foot-row .c-tot .ftot { font-size: 17px; }
+.lg-row { display: contents; }
+.lg-row > * { border-bottom: 1px solid var(--rule-soft); display: flex; align-items: center; min-width: 0; }
+.lg-row > .c-cash, .lg-row > .c-inv, .lg-row > .c-tot { justify-content: center; }
+.lg-row > .c-cash { border-left: 1px solid var(--rule); box-shadow: inset 2px 0 0 #fff, inset 3px 0 0 var(--rule-soft); }
+.lg-row > .c-inv { border-left: 1px solid var(--rule-soft); }
+.lg-row > .c-tot { border-left: 1px solid var(--rule); justify-content: flex-end; padding-right: 2px; }
+
+.lg-head-row > * { border-bottom: 1px solid var(--ink); align-items: flex-end; padding: 0 0 8px; min-height: 50px; }
+.lg-head-row .h { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); line-height: 14px; }
+.lg-head-row .c-cash, .lg-head-row .c-inv { flex-direction: column; justify-content: flex-end; align-items: center; text-align: center; padding: 10px 8px 8px; position: relative; }
+.lg-head-row .col-closed .colname, .lg-head-row .col-inked .colname { white-space: normal; }
+.lg-head-row .c-tot { justify-content: flex-end; text-align: right; white-space: nowrap; letter-spacing: 0.08em; }
+.colname { font-family: var(--font-ui); font-weight: 600; font-size: 11.5px; letter-spacing: 0.07em; white-space: nowrap; text-transform: uppercase; color: var(--ink); line-height: 15px; display: inline-flex; align-items: center; gap: 5px; }
+.colsub { font-family: var(--font-ui); font-size: 11.5px; line-height: 14px; color: var(--muted); margin-top: 3px; }
+.colsub .n { font-family: var(--font-display); font-size: 13px; color: var(--ink-2); font-variant-numeric: lining-nums; }
+.colbar { position: absolute; left: 0; right: 0; top: 0; height: 3px; transform: scaleX(0); transform-origin: left; transition: transform 320ms cubic-bezier(.3,.7,.3,1); }
+.c-cash .colbar { background: var(--cash); }
+.c-inv .colbar { background: var(--inv); }
+.lock { width: 10px; height: 11px; display: none; }
+
+.prov { padding: 3px 10px 3px 2px; flex-direction: column; align-items: flex-start !important; justify-content: center; min-height: 44px; }
+.prov .lbl { font-size: 15px; line-height: 18px; white-space: nowrap; color: var(--ink); background: none; border: 0; padding: 0; text-align: left; font-family: var(--font-text); cursor: default; }
+.prov .hint { font-family: var(--font-ui); font-size: 12px; line-height: 14px; white-space: nowrap; color: var(--muted); margin-top: 1px; }
+.prov .tip { display: none; }
+
+/* a cell: − box + */
+.cell { display: flex; align-items: center; gap: 3px; position: relative; }
+.step {
+  width: 26px; height: 26px; border-radius: 2px; border: 1px solid var(--rule-soft); background: var(--paper);
+  font-family: var(--font-ui); font-size: 15px; line-height: 1; color: var(--ink-2); padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color 120ms, border-color 120ms, opacity 200ms;
+}
+.step:hover { border-color: var(--ink); background: var(--ground); }
+.step:active { background: var(--marble); }
+.inked-val { display: none; font-family: var(--font-display); font-weight: 500; font-size: 17px; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; }
+.inked-val.zero { color: var(--rule); }
+
+.tot { font-family: var(--font-display); font-size: 16px; color: var(--muted); font-variant-numeric: lining-nums tabular-nums; }
+.tot.zero { color: var(--rule-soft); }
+
+/* totals row: single rule above, double rule below (the accountant's convention) */
+.lg-foot-row > * { border-bottom: 3px double var(--ink) !important; border-top: 1px solid var(--ink); min-height: 40px; }
+.lg-foot-row .flab { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+.ftot { font-family: var(--font-display); font-weight: 500; font-size: 19px; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; transition: color 200ms; }
+.ftot.dim { color: var(--rule); }
+.ftot.ok { color: var(--forest); }
+.ftot.over { color: var(--amber); }
+
+/* the running total line */
+.lg-status {
+  margin-top: 10px; min-height: 28px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  font-family: var(--font-ui); font-size: 14px; color: var(--ink-2); transition: color 200ms;
+}
+.lg-status .num, .pin-total .num { font-family: var(--font-display); font-weight: 500; font-size: 21px; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); transition: color 200ms; }
+.lg-status .sep { color: var(--rule); }
+.st-ok, .st-ok .num { color: var(--forest) !important; }
+.st-over, .st-over .num { color: var(--amber) !important; }
+.st-quiet { color: var(--muted); }
+.st-mark { display: inline-flex; width: 18px; height: 18px; align-self: center; }
+
+/* ---------- column states ---------- */
+.col-closed { background: #F4F2EE; }
+.col-closed .box { background: var(--disabled-bg); border-color: transparent; opacity: .55; cursor: default; }
+.col-closed .step { visibility: hidden; }
+.lg-head-row .col-closed .colname { color: var(--disabled-ink); }
+.lg-head-row .col-closed .lock { display: inline-block; }
+.lg-row > .col-active.c-cash { background: rgba(230,207,154,0.13); }
+.lg-row > .col-active.c-inv { background: rgba(213,217,188,0.22); }
+.lg-head-row .col-active .colbar { transform: scaleX(1); }
+.c-inv.col-active .box:focus-within { border-color: var(--olive); box-shadow: 0 0 0 2px rgba(91,102,49,0.2); }
+.col-inked .cell .step, .col-inked .cell .box { display: none; }
+.col-inked .inked-val { display: inline; }
+.lg-head-row .col-inked .lock { display: inline-block; }
+.col-none .cell { visibility: hidden; }
+
+.reveal { animation: reveal 300ms cubic-bezier(.3,.7,.3,1) both; }
+@keyframes reveal { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.ink-in { animation: inkIn 360ms ease both; }
+@keyframes inkIn { from { opacity: 0; filter: blur(1.5px); } to { opacity: 1; filter: none; } }
+
+/* ---------- short laptops (1280x650): the ledger tightens ---------- */
+@media (min-width: 701px) and (max-height: 760px) {
+  .c-frame.stage .c-side { padding-top: 22px; }
+  .c-frame.stage .c-stage { padding-top: 12px; }
+  .ledger { padding: 12px 22px 6px; }
+  .lg-title { font-size: 14px; padding-bottom: 6px; }
+  .lg-split { margin-top: 8px; line-height: 30px; }
+  .split-box { height: 30px; }
+  .lg-grid { margin-top: 4px; }
+  .lg-head-row > * { min-height: 44px; padding-bottom: 5px; }
+  .lg-head-row .c-cash, .lg-head-row .c-inv { padding: 7px 8px 5px; }
+  .prov { min-height: 39px; padding-top: 2px; padding-bottom: 2px; }
+  .lg-foot-row > * { min-height: 34px; }
+  .lg-status { margin-top: 5px; min-height: 26px; }
+  .c-frame.stage .c-next-bar { padding: 8px 36px 9px; }
+  .c-next { min-height: 44px; }
+}
+/* the preview frame is 36 px shorter than the mockup's at 1280x650: rows give it back */
+@media (min-width: 701px) and (max-height: 700px) {
+  .c-frame.stage .c-side { padding-top: 18px; }
+  .c-frame.stage .c-stage { padding-top: 8px; }
+  .ledger { padding: 9px 22px 4px; }
+  .lg-split { margin-top: 5px; }
+  .lg-head-row > * { min-height: 40px; }
+  .prov { min-height: 35px; padding-top: 1px; padding-bottom: 1px; }
+  .prov .lbl { font-size: 14.5px; line-height: 17px; }
+  .prov .hint { font-size: 11.5px; line-height: 13px; }
+  .lg-foot-row > * { min-height: 31px; }
+  .lg-status { margin-top: 3px; min-height: 24px; }
+}
+
+/* ---------- phone (below 700px) ---------- */
+@media (max-width: 700px) {
+  .c-frame.stage .c-side { padding: 12px 18px 0; }
+  .c-frame.stage .c-side .c-q { font-size: 19px; line-height: 24px; }
+  .c-side .c-i { font-size: 14px; line-height: 18px; margin-top: 5px; }
+  .c-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .c-side .c-note.ctx { margin-top: 3px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .c-bridge { font-size: 16px; line-height: 21px; margin-bottom: 3px; }
+  .c-bridge::before { margin-top: 9px; }
+  .c-frame.stage .c-stage { padding: 6px 18px 0; position: relative; }
+  .c-frame.stage .c-next-bar { flex-direction: column; align-items: stretch; gap: 5px; padding: 5px 18px 10px; border-top: 1px solid var(--rule-soft); background: var(--paper); }
+  .pin-total { display: flex; align-items: baseline; justify-content: center; gap: 4px; flex-wrap: nowrap; font-family: var(--font-ui); font-size: 12px; color: var(--ink-2); min-height: 22px; white-space: nowrap; }
+  .pin-total .num { font-size: 15px; }
+  .pin-total.tight { gap: 3px; font-size: 11px; }
+  .pin-total.tight .num { font-size: 13.5px; }
+  .pin-total .st-mark { width: 15px; height: 15px; }
+  .pin-total .sep { color: var(--rule); }
+  .c-next { min-height: 48px; }
+
+  .ledger { padding: 0; border: 0; box-shadow: none; background: transparent; }
+  .lg-title { font-size: 11.5px; letter-spacing: 0.16em; padding-bottom: 5px; }
+  .lg-split { font-size: 15px; line-height: 26px; margin-top: 5px; column-gap: 5px; }
+  .split-box { height: 28px; width: 84px !important; }
+  .split-box input { font-size: 17px; width: 34px !important; }
+  .lg-split.inked { display: none; }
+  .lg-status { display: none; }
+
+  .lg-grid, .lg-grid[data-active="inv"] { grid-template-columns: 1fr 94px; margin-top: 4px; }
+  .lg-grid .c-tot { display: none !important; }
+  .lg-grid[data-active="cash"] .c-inv, .lg-grid[data-active="inv"] .c-cash { display: none !important; }
+  .lg-row > .c-cash, .lg-row > .c-inv { border-left: 1px solid var(--rule); box-shadow: none; }
+  .lg-head-row > * { min-height: 0; padding: 0 0 4px; }
+  .lg-head-row .c-cash, .lg-head-row .c-inv { padding: 5px 2px 4px; }
+  .lg-head-row .prov { justify-content: flex-end; padding: 0 6px 4px 0; min-height: 0; }
+  .colname, .lg-head-row .col-closed .colname { font-size: 11px; letter-spacing: 0; text-transform: none; white-space: nowrap; }
+  .colname .lock { display: none !important; }
+  .colsub { font-size: 11px; line-height: 13px; margin-top: 1px; white-space: nowrap; }
+  .colsub .n { font-size: 12.5px; }
+  .collapsed { display: inline-flex !important; align-items: center; gap: 5px; font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--disabled-ink); white-space: nowrap; }
+  .collapsed .n { font-family: var(--font-display); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+  .collapsed .lock { display: inline-block; width: 9px; height: 10px; }
+  .inv-desc { grid-column: 1 / -1; font-family: var(--font-ui); font-size: 11px; line-height: 14px; color: var(--muted); padding: 3px 0 4px; border-bottom: 1px solid var(--rule-soft); }
+
+  .prov { min-height: 30px; padding: 0 3px 0 0; }
+  .prov .lbl { font-size: 13.5px; line-height: 17px; cursor: pointer; text-decoration: underline dotted #BDB6AA; text-underline-offset: 3px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .prov .lbl.nohint { text-decoration: none; cursor: default; }
+  .prov .hint { display: none; }
+  .prov .tip { position: absolute; z-index: 30; left: 0; top: calc(100% - 3px); width: 236px; background: var(--ink); color: var(--paper); font-family: var(--font-ui); font-size: 12.5px; line-height: 16px; padding: 7px 9px; border-radius: 2px; box-shadow: 0 6px 18px rgba(13,12,11,.18); }
+  .prov.tipon .tip { display: block; }
+  .prov.tipup .tip { top: auto; bottom: calc(100% - 3px); }
+  .prov { position: relative; }
+  .step { display: none !important; }
+  .cell { gap: 0; }
+  .box { height: 26px; padding: 0 7px; width: 86px; justify-content: space-between; }
+  .box input { width: 40px; font-size: 16.5px; }
+  .lg-foot-row { display: none; }
+
+  /* keyboard up: the total and Next ride just above it, the page may scroll (declared exception) */
+  body.kb .c-frame.stage { height: auto; max-height: none; min-height: 0; overflow: visible; }
+  body.kb .c-next-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; box-shadow: 0 -6px 16px rgba(13,12,11,.06); }
+  body.kb .c-stage { padding-bottom: calc(var(--kb, 0px) + 120px) !important; }
+}
+.collapsed, .inv-desc { display: none; }
+@media (max-width: 700px) { .inv-desc.show { display: block; } }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'allocate-ledger') { CeresNav.go(step.id); return }   // wrong page for this id: send it to its own
+  const P = window.CeresPreview
+  const ui = P.mount(step, { stage: true })
+  const D = step.data
+  const U = D.ui
+  const PH = D.phase                     // 'cash' (5.1) or 'inv' (5.2)
+  const esc = ui.esc, glue = ui.glue, fill = CeresNav.fill
+  const $ = (id) => document.getElementById(id)
+
+  /* ---------------- seeded shuffle (fixed for the preview; per person in the survey) ---------------- */
+  function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) } return h >>> 0 }
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
+  function shuffle(list, key) { const a = list.slice(), r = rng(hash('ceres-preview') ^ hash(key)); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t } return a }
+  // one order for both halves of the ledger (one object over two screens)
+  const rows = D.shuffle ? shuffle(D.rows, 'ledgerCash') : D.rows.slice()
+  if (D.jpmNeverFirst && rows[0].id === 'jpm') { const t = rows[0]; rows[0] = rows[1]; rows[1] = t }
+
+  /* ---------------- state (amounts in tenths of $1mm) ---------------- */
+  const T = (mm) => (typeof mm === 'number' && isFinite(mm) ? Math.round(mm * 10) : null)
+  const S = { split: null, cash: {}, inv: {} }
+  if (PH === 'cash') {
+    const sv = ui.load()
+    if (sv && typeof sv === 'object') {
+      S.split = T(sv.split)
+      for (const r of rows) if (T(sv[r.id]) != null) S.cash[r.id] = T(sv[r.id])
+    }
+  } else {
+    // 5.1's column, inked: the reviewer's own if they typed a split, else the sample
+    const got = CeresNav.answers.get(D.cashFrom)
+    const own = got && typeof got === 'object' && T(got.split) != null
+    const src = own ? got : CeresNav.step(D.cashFrom).data.sample
+    S.split = T(src.split)
+    for (const r of rows) if (T(src[r.id]) != null) S.cash[r.id] = T(src[r.id])
+    const sv = ui.load()
+    if (sv && typeof sv === 'object') for (const r of rows) if (T(sv[r.id]) != null) S.inv[r.id] = T(sv[r.id])
+  }
+  const sum = (o) => rows.reduce((a, r) => a + (o === S.cash && !(S.split > 0) ? 0 : (o[r.id] || 0)), 0) // a closed cash column (split 0) counts as zero
+  const f = (t) => (t / 10).toFixed(1)
+  const money = (t) => '$' + f(t) + 'mm'
+  const num = (t) => `<span class="num">${money(t)}</span>`
+  const X = () => (S.split == null ? null : 100 - S.split)
+  const phone = () => window.matchMedia('(max-width: 700px)').matches
+  /** Escape a template, then put HTML in its {placeholders}. */
+  const tplHTML = (tpl, map) => esc(tpl).replace(/\{([a-zA-Z]+)\}/g, (m, k) => (map[k] != null ? map[k] : m))
+
+  // 5.2: the amount in the question in Bodoni numerals, as in the mockup
+  if (PH === 'inv' && ui.band && ui.vars.X != null) {
+    const q = ui.band.querySelector('.c-q')
+    const amt = '$' + ui.vars.X + 'mm'
+    if (q) q.innerHTML = q.innerHTML.replace(amt, `<span class="x">${amt}</span>`)
+  }
+
+  /* ---------------- the ledger (mockups/ledger.html) ---------------- */
+  const parts = D.split ? D.split.parts : ['Of their $10mm, $', { slot: 'number', id: 'split' }, 'mm is in banking and cash. The rest is invested.']
+  const pre = String(parts[0]), post = String(parts[2] || '')
+  const cur = pre.endsWith('$') ? '$' : ''
+  const preText = pre.slice(0, pre.length - cur.length).trim()
+  const unit = /^mm/.test(post) ? 'mm' : ''
+  const postText = post.slice(unit.length).trim()
+  const cut = postText.indexOf('. ')
+  const isText = cut >= 0 ? postText.slice(0, cut + 1) : postText
+  const restText = cut >= 0 ? postText.slice(cut + 2) : ''
+  const splitAria = `${preText} how many $mm is in banking and cash`
+
+  const COL = { cash: U.columns.cash, inv: U.columns.inv }
+  const invH = U.invHeader.split(': ')      // ['Investments', 'shares, bonds, ...']
+  const footLabel = U.total
+
+  ui.obj.innerHTML = `
+    <section class="ledger" id="ledger" aria-label="The ledger">
+      <div class="lg-title">${esc(U.header)}</div>
+      <p class="lg-split" id="split">
+        <span>${glue(preText)}</span>
+        <label class="box split-box" id="splitBox"><span class="cur">${esc(cur)}</span><input id="splitIn" inputmode="decimal" autocomplete="off" placeholder="" aria-label="${esc(splitAria)}"><span class="unit">${esc(unit)}</span></label>
+        <span>${glue(isText)}</span>
+        <span class="rest" id="rest">${glue(restText)}</span>
+      </p>
+      <div class="lg-grid" id="grid" role="table" aria-label="Who holds the money"></div>
+      <div class="lg-status" id="status" aria-live="polite"></div>
+    </section>`
+  const pin = document.createElement('div'); pin.className = 'pin-total'; pin.id = 'pin'; pin.setAttribute('aria-hidden', 'true')
+  ui.bar.insertBefore(pin, ui.bar.firstChild)
+
+  const LOCK = '<svg class="lock" viewBox="0 0 10 11" aria-hidden="true"><rect x="1" y="4.6" width="8" height="5.9" rx="1" fill="currentColor"/><path d="M2.9 4.8V3.3a2.1 2.1 0 0 1 4.2 0v1.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>'
+  function cellHTML(col, r) {
+    const name = COL[col], lab = esc(r.label), st = (D.step || 0.5).toFixed(1)
+    return `<div class="cell" data-col="${col}" data-row="${r.id}">
+      <button class="step minus" type="button" tabindex="-1" aria-label="Take $${st}mm from ${lab}, ${esc(name)}">−</button>
+      <label class="box"><span class="cur">$</span><input inputmode="decimal" autocomplete="off" placeholder="" data-col="${col}" data-row="${r.id}" aria-label="${lab}, ${esc(name)}, in $mm"><span class="unit">mm</span></label>
+      <button class="step plus" type="button" tabindex="-1" aria-label="Add $${st}mm to ${lab}, ${esc(name)}">+</button>
+      <span class="inked-val" data-ink="${col}-${r.id}"></span>
+    </div>`
+  }
+  function buildGrid() {
+    let h = `<div class="lg-row lg-head-row" role="row">
+      <div class="prov h" role="columnheader"><span class="hp">${esc(U.rowHead)}</span><span class="collapsed" id="collapsed"></span></div>
+      <div class="c-cash" role="columnheader" id="hCash"><span class="colbar"></span><span class="colname">${LOCK}${esc(COL.cash)}</span><span class="colsub" id="subCash"></span></div>
+      <div class="c-inv" role="columnheader" id="hInv"><span class="colbar"></span><span class="colname" id="invName">${LOCK}${esc(COL.inv)}</span><span class="colsub" id="subInv"></span></div>
+      <div class="c-tot h" role="columnheader">${esc(U.totalHead)}</div>
+    </div>
+    <div class="inv-desc" id="invDesc">${esc(U.invHeader)}</div>`
+    for (const r of rows) {
+      h += `<div class="lg-row" role="row" data-r="${r.id}">
+        <div class="prov" role="rowheader"><button type="button" class="lbl${r.hint ? '' : ' nohint'}" tabindex="-1">${glue(r.label)}</button>${r.hint ? `<span class="hint">${esc(r.hint)}</span><span class="tip">${esc(r.hint)}</span>` : ''}</div>
+        <div class="c-cash" role="cell">${cellHTML('cash', r)}</div>
+        <div class="c-inv" role="cell">${cellHTML('inv', r)}</div>
+        <div class="c-tot" role="cell"><span class="tot" data-tot="${r.id}"></span></div>
+      </div>`
+    }
+    h += `<div class="lg-row lg-foot-row" role="row">
+      <div class="prov"><span class="flab">${esc(footLabel)}</span></div>
+      <div class="c-cash"><span class="ftot" id="fCash"></span></div>
+      <div class="c-inv"><span class="ftot" id="fInv"></span></div>
+      <div class="c-tot"><span class="ftot" id="fAll"></span></div>
+    </div>`
+    $('grid').innerHTML = h
+  }
+
+  /* ---------------- parsing and typing ---------------- */
+  function parse(str) {
+    const s = String(str).replace(',', '.').trim()
+    if (s === '' || s === '.') return null
+    const v = Math.round(parseFloat(s) * 10)
+    return isNaN(v) ? null : v
+  }
+  function clean(raw) {
+    let s = raw.replace(',', '.').replace(/[^0-9.]/g, '')
+    const i = s.indexOf('.'); if (i >= 0) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '').slice(0, 1)
+    s = s.replace(/^0+(?=\d)/, '')
+    return s
+  }
+  function refuse(input) { const b = input.closest('.box'); b.classList.remove('no'); void b.offsetWidth; b.classList.add('no') }
+  function store(input, v) {
+    if (input.id === 'splitIn') S.split = v
+    else (input.dataset.col === 'cash' ? S.cash : S.inv)[input.dataset.row] = v
+  }
+  function onType(e) {
+    const input = e.target
+    const prev = input.dataset.prev || ''
+    const s = clean(input.value)
+    const v = parse(s)
+    if (v != null && v > 100) { input.value = prev; refuse(input); return }
+    input.value = s; input.dataset.prev = s
+    store(input, v); update(); save()
+  }
+  function onBlur(e) {
+    const input = e.target, v = parse(input.value)
+    input.value = v == null ? '' : f(v); input.dataset.prev = input.value
+  }
+  function setVal(input, v) {
+    v = v == null ? null : Math.max(0, Math.min(100, v))
+    input.value = v == null ? '' : f(v); input.dataset.prev = input.value
+    store(input, v)
+  }
+  const STEP = Math.round((D.step || 0.5) * 10)
+  function bump(input, d) {
+    if (input.disabled) return
+    const c = parse(input.value)
+    let v = c == null ? (d > 0 ? 0 : null) : c
+    if (v == null) return
+    v = v + d
+    if (v > 100) { refuse(input); v = 100 }
+    setVal(input, Math.max(0, v)); update(); save()
+  }
+  function inputsOf(col) { return Array.from(document.querySelectorAll(`.box input[data-col="${col}"]`)) }
+  function onKey(e) {
+    const input = e.target
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.altKey) { e.preventDefault(); bump(input, e.key === 'ArrowUp' ? STEP : -STEP) }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (input.id === 'splitIn') { const first = inputsOf('cash')[0]; if (S.split > 0 && first) first.focus(); else if (ui.next) ui.next.focus(); return }
+      const list = inputsOf(input.dataset.col), i = list.indexOf(input)
+      if (i < list.length - 1) list[i + 1].focus(); else { input.blur(); if (ui.next) ui.next.focus() }
+    }
+  }
+  /* hold a stepper to repeat */
+  function wireStep(btn) {
+    let t1 = 0, t2 = 0
+    const input = btn.parentElement.querySelector('input')
+    const d = btn.classList.contains('plus') ? STEP : -STEP
+    const stop = () => { clearTimeout(t1); clearInterval(t2) }
+    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); bump(input, d); t1 = setTimeout(() => { t2 = setInterval(() => bump(input, d), 110) }, 420) })
+    ;['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => btn.addEventListener(ev, stop))
+    btn.addEventListener('click', (e) => { if (e.detail === 0) bump(input, d) }) // keyboard / assistive click
+  }
+
+  /* ---------------- saving: the reviewer's answer, in $mm ---------------- */
+  function save() {
+    const v = {}
+    if (PH === 'cash') {
+      if (S.split != null) v.split = S.split / 10
+      for (const r of rows) if (S.cash[r.id] != null) v[r.id] = S.cash[r.id] / 10
+    } else {
+      for (const r of rows) if (S.inv[r.id] != null) v[r.id] = S.inv[r.id] / 10
+    }
+    ui.save(Object.keys(v).length ? v : undefined)
+  }
+
+  /* ---------------- render ---------------- */
+  let lastCashOpen = false, lastInvOpen = false
+  function colState() {
+    const cashOpen = PH === 'cash' && S.split != null && S.split > 0
+    return {
+      cash: PH === 'cash' ? (cashOpen ? 'active' : 'closed') : 'inked',
+      inv: PH === 'cash' ? 'closed' : (X() === 0 ? 'none' : 'active'),
+    }
+  }
+  function setCol(sel, state) {
+    document.querySelectorAll(sel).forEach((el) => { el.classList.remove('col-closed', 'col-active', 'col-inked', 'col-none'); el.classList.add('col-' + state) })
+  }
+  const TICK = '<svg class="st-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 L10 17 L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  // the running total: 'Banking and cash: {placed} of {target} · {left} left', over target '· {x} too much'
+  const RUN = U.running.split(' · ')
+  function line(col, have, want) {
+    const d = want - have
+    const head = tplHTML(RUN[0].replace(COL.cash, COL[col]), { placed: num(have), target: num(want) })
+    const sep = ' <span class="sep">·</span> '
+    if (d > 0) return { cls: '', html: head + sep + tplHTML(RUN.slice(1).join(' · '), { left: num(d) }), next: fill(D.missing.left, { x: money(d) }) }
+    if (d < 0) return { cls: 'st-over', html: head + sep + tplHTML(U.over, { x: num(-d) }), next: fill(D.missing.over, { x: money(-d) }) }
+    return { cls: 'st-ok', html: TICK + head, next: null }
+  }
+  function status() {
+    if (PH === 'cash') {
+      if (S.split == null) return { cls: 'st-quiet', html: esc(D.status.noSplit), next: D.missing.noSplit }
+      if (S.split === 0) return { cls: 'st-ok', html: esc(D.status.zero), next: null }
+      return line('cash', sum(S.cash), S.split)
+    }
+    if (X() === 0) return { cls: 'st-ok', html: esc(D.status.none), next: null }
+    return line('inv', sum(S.inv), X())
+  }
+
+  function update() {
+    const st = colState()
+    const SB = U.sub
+    setCol('.lg-grid .c-cash', st.cash)
+    setCol('.lg-grid .c-inv', st.inv)
+    $('grid').dataset.active = PH
+
+    // inputs live only in the active column
+    inputsOf('cash').forEach((i) => { i.disabled = st.cash !== 'active' })
+    inputsOf('inv').forEach((i) => { i.disabled = st.inv !== 'active' })
+    document.querySelectorAll('.step').forEach((b) => { b.disabled = b.parentElement.querySelector('input').disabled })
+    $('splitIn').disabled = PH !== 'cash'
+    $('split').classList.toggle('inked', PH !== 'cash')
+    $('splitBox').classList.toggle('filled', S.split != null)
+    $('splitBox').classList.toggle('cue', S.split == null && PH === 'cash')
+    document.querySelectorAll('.cell .box').forEach((b) => b.classList.toggle('filled', b.querySelector('input').value !== ''))
+
+    // column sub-labels
+    const n = (t) => `<span class="n">${money(t)}</span>`
+    $('subCash').innerHTML = S.split == null ? esc(phone() ? SB.locked : SB.first)
+      : S.split === 0 ? esc(SB.nothing)
+      : PH !== 'cash' ? tplHTML(SB.placed, { x: n(S.split) })
+      : tplHTML(phone() ? SB.phone : SB.toPlace, { x: n(S.split) })
+    if (PH === 'cash') {
+      $('invName').innerHTML = `${LOCK}${esc(COL.inv)}`
+      $('subInv').innerHTML = S.split == null ? esc(SB.nextScreen) : `${n(X())}<br>${esc(SB.nextScreen)}`
+    } else {
+      $('invName').innerHTML = `${LOCK}${esc(invH[0])}${phone() ? '' : ':'}`
+      $('subInv').innerHTML = X() === 0 ? esc(SB.nothing) : phone() ? tplHTML(SB.phone, { x: n(X()) }) : esc(invH.slice(1).join(': '))
+    }
+    // phone: the other column collapses to a read-only total
+    $('collapsed').innerHTML = PH === 'cash'
+      ? `${LOCK}${esc(COL.inv)} <span class="n">${S.split == null ? '–' : money(X())}</span>`
+      : `${LOCK}${esc(COL.cash)} <span class="n">${S.split == null ? '–' : money(S.split)}</span>`
+    $('grid').querySelector('.hp').style.display = phone() ? 'none' : ''
+    $('invDesc').classList.toggle('show', PH !== 'cash')
+    const si0 = $('splitIn'); si0.style.width = PH !== 'cash' && si0.value ? (si0.value.length * 0.5 + 0.05) + 'em' : ''
+
+    // inked cash values, row totals, footer
+    for (const r of rows) {
+      const c = S.split > 0 ? (S.cash[r.id] || 0) : 0, v = S.inv[r.id] || 0
+      const ink = document.querySelector(`[data-ink="cash-${r.id}"]`)
+      ink.textContent = c ? money(c) : '–'; ink.classList.toggle('zero', !c)
+      const t = document.querySelector(`[data-tot="${r.id}"]`)
+      const tot = c + (PH === 'cash' ? 0 : v)
+      t.textContent = tot ? money(tot) : '–'; t.classList.toggle('zero', !tot)
+    }
+    const sc = sum(S.cash), si = sum(S.inv)
+    const fc = $('fCash'), fi = $('fInv'), fa = $('fAll')
+    fc.textContent = S.split == null ? '–' : money(sc)
+    fc.className = 'ftot ' + (S.split == null ? 'dim' : PH !== 'cash' ? '' : sc === S.split ? 'ok' : sc > S.split ? 'over' : '')
+    fi.textContent = PH === 'cash' ? '–' : money(si)
+    fi.className = 'ftot ' + (PH === 'cash' ? 'dim' : si === X() ? 'ok' : si > X() ? 'over' : '')
+    const all = sc + (PH === 'cash' ? 0 : si)
+    fa.textContent = all ? money(all) : '–'
+    fa.className = 'ftot ' + (all === 100 && PH !== 'cash' ? 'ok' : all > 100 ? 'over' : 'dim')
+
+    // running total, and the survey's Next label beside the live Next
+    const s = status()
+    const stEl = $('status'); stEl.className = 'lg-status ' + s.cls; stEl.innerHTML = s.html
+    pin.className = 'pin-total ' + s.cls; pin.innerHTML = s.html
+    if (phone() && pin.scrollWidth > pin.clientWidth + 1) pin.classList.add('tight') // always one line above the keyboard
+    if (s.next) ui.status(false, s.next); else ui.status(true)
+
+    // reveal motion when a column opens
+    const cashOpen = st.cash === 'active', invOpen = st.inv === 'active'
+    if (cashOpen && !lastCashOpen) document.querySelectorAll('.lg-grid .c-cash .cell').forEach((c, i) => { c.classList.remove('reveal'); void c.offsetWidth; c.style.animationDelay = (i * 25) + 'ms'; c.classList.add('reveal') })
+    if (invOpen && !lastInvOpen) document.querySelectorAll('.lg-grid .c-inv .cell').forEach((c, i) => { c.classList.remove('reveal'); void c.offsetWidth; c.style.animationDelay = (60 + i * 25) + 'ms'; c.classList.add('reveal') })
+    lastCashOpen = cashOpen; lastInvOpen = invOpen
+  }
+
+  /* ---------------- phone: hints on tap, the bar above the keyboard ---------------- */
+  function wirePhone() {
+    document.querySelectorAll('.prov .lbl').forEach((l) => l.addEventListener('click', (e) => {
+      if (!phone() || l.classList.contains('nohint')) return
+      e.stopPropagation()
+      const p = l.parentElement, on = !p.classList.contains('tipon')
+      document.querySelectorAll('.prov.tipon').forEach((x) => x.classList.remove('tipon', 'tipup'))
+      p.classList.toggle('tipon', on)
+      // near the bottom, open the hint upwards so it never covers the running total
+      if (on && p.querySelector('.tip').getBoundingClientRect().bottom > ui.bar.getBoundingClientRect().top - 4) p.classList.add('tipup')
+    }))
+    document.addEventListener('click', () => document.querySelectorAll('.prov.tipon').forEach((x) => x.classList.remove('tipon')))
+    const vv = window.visualViewport
+    const bar = ui.bar
+    // keep the focused row between the top of the visible area and the pinned bar
+    const keepVisible = () => {
+      if (!vv || !document.body.classList.contains('kb')) return
+      const a = document.activeElement
+      if (!a || a.tagName !== 'INPUT') return
+      const lr = a.closest('.lg-row')
+      const row = a.closest('.lg-split') || (lr && lr.querySelector('.prov')) || a
+      const r = row.getBoundingClientRect(), b = bar.getBoundingClientRect()
+      const top = vv.offsetTop + 6, bottom = b.top - 6
+      if (r.bottom > bottom) window.scrollBy(0, r.bottom - bottom)
+      else if (r.top < top) window.scrollBy(0, r.top - top)
+    }
+    const pinBar = () => {
+      if (!vv) return
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      const up = phone() && kb > 80
+      document.body.classList.toggle('kb', up)
+      document.documentElement.style.setProperty('--kb', up ? kb + 'px' : '0px')
+      bar.style.transform = up ? `translateY(${-kb}px)` : ''
+      if (up) keepVisible()
+      else if (window.scrollY) window.scrollTo(0, 0)
+    }
+    if (vv) { vv.addEventListener('resize', pinBar); vv.addEventListener('scroll', pinBar) }
+    document.addEventListener('focusin', () => requestAnimationFrame(keepVisible))
+    window.addEventListener('resize', () => update())
+  }
+
+  /* ---------------- boot ---------------- */
+  buildGrid()
+  document.querySelectorAll('.box input').forEach((i) => { i.addEventListener('input', onType); i.addEventListener('blur', onBlur); i.addEventListener('keydown', onKey) })
+  document.querySelectorAll('.step').forEach(wireStep)
+  document.querySelectorAll('.cell .box, .split-box').forEach((b) => b.addEventListener('mousedown', (e) => { if (e.target === b) { e.preventDefault(); b.querySelector('input').focus() } }))
+  // the values already known: the split and the cash column (5.1's own, or inked on 5.2), and 5.2's own amounts
+  setVal($('splitIn'), S.split)
+  inputsOf('cash').forEach((i) => setVal(i, S.cash[i.dataset.row] != null ? S.cash[i.dataset.row] : null))
+  inputsOf('inv').forEach((i) => setVal(i, S.inv[i.dataset.row] != null ? S.inv[i.dataset.row] : null))
+  wirePhone()
+  update()
+  if (PH === 'inv') document.querySelectorAll('.lg-grid .c-cash .inked-val').forEach((e, i) => { e.style.animationDelay = (i * 30) + 'ms'; e.classList.add('ink-in') })
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => update())
+})()
+</script>
+</body>
+</html>

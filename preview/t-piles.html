@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-piles: the PileSort of 2.2, 2.5, 6.3 and 7.2. Ported from mockups/piles.html (the sorter half; the top-3 podium is
+   t-podium.html). Page-only CSS; the shared frame is untouched. Cards with a `group` (2.5) carry it as a small eyebrow
+   above the label.
+   v3 (Adam, 15 Oct: changing a card was hard): the four piles are one size, Not for HNW keeps only a light grey tint;
+   Undo, beside the card, puts the last sorted card back on top of the deck (Z or Backspace on a laptop); every pile that
+   holds cards shows Change, which opens it (its fan) so a card can be sorted again; once every card is sorted, a tap
+   anywhere on a pile opens it. The card and the piles keep one size from sort to sort on a laptop: the size 2.2's
+   taller band (two notes) needs, so 2.5, 6.3 and 7.2 match it. */
+:root {
+  --card-w: 360px; --card-h: 178px;
+  --mini-h: 32px; --edge: 3px;
+  --ease-out: cubic-bezier(.3,.7,.2,1);
+  --ease-spring: cubic-bezier(.34,1.45,.64,1);
+}
+.c-obj.ps-obj { padding: 16px 20px 0; position: relative; }
+mark { background: none; color: inherit; }
+
+/* ---------- PileSort ---------- */
+.ps { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ps-stage { position: relative; height: 192px; flex: none; }
+
+/* the deck: the cards still to sort, edges showing under the current one */
+.ps-deck { position: absolute; left: 50%; top: 0; width: var(--card-w); height: var(--card-h); transform: translateX(-50%); pointer-events: none; }
+.ps-deck i.top { display: flex; flex-direction: column; justify-content: center; padding: 0 34px 6px; background: var(--wheat-light); }
+.ps-deck i.top .lbl { font-family: var(--font-text); font-weight: 600; font-size: 22px; line-height: 28px; color: var(--ink); opacity: .9; text-wrap: balance; }
+.ps-deck i.top .lbl .tier { font-family: var(--font-ui); font-weight: 500; font-size: 13px; letter-spacing: .12em; color: var(--bronze); }
+.ps-deck i.top .hint { font-family: var(--font-text); font-size: 15px; line-height: 21px; color: var(--muted); margin-top: 7px; max-width: 290px; }
+.ps-deck i { font-style: normal; position: absolute; left: 0; right: 0; top: 0; height: var(--card-h); border-radius: 2px;
+  background: #E9D7AC; border: 1px solid rgba(138,97,22,.30); box-shadow: 0 1px 0 rgba(13,12,11,.04); }
+.ps-deck .hint:empty, .ps-card .hint:empty { display: none; }
+/* the card's group (2.5: "Specialist resources" and so on), a small eyebrow above the label */
+.ps-card .grp, .ps-deck i.top .grp { font-family: var(--font-ui); font-weight: 600; font-size: 11px; line-height: 14px; letter-spacing: .14em; text-transform: uppercase; color: var(--bronze); margin-bottom: 6px; }
+.ps-deck i.top .grp { opacity: .9; }
+.ps-card .grp:empty, .ps-deck .grp:empty { display: none; }
+.ps-card.flying .grp { opacity: 0; }
+
+.ps-card {
+  position: absolute; left: 50%; top: 0; width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
+  background: var(--wheat-light); border-radius: 2px; border: 1px solid rgba(138,97,22,.42);
+  box-shadow: 0 1px 0 rgba(13,12,11,.05), 0 10px 26px -12px rgba(13,12,11,.30);
+  display: flex; flex-direction: column; justify-content: center; padding: 0 34px 6px;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  transform-origin: 50% 50%; will-change: transform; z-index: 5; outline: none;
+}
+.ps-card::before { /* engraved inner rule, like a banknote panel */
+  content: ""; position: absolute; inset: 7px; border: 1px solid rgba(122,62,18,.20); border-radius: 1px; pointer-events: none; }
+.ps-card:focus-visible { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--navy), 0 10px 26px -12px rgba(13,12,11,.30); }
+.ps-card.dragging { cursor: grabbing; box-shadow: 0 1px 0 rgba(13,12,11,.05), 0 24px 40px -14px rgba(13,12,11,.40); }
+.ps-card .lbl { font-family: var(--font-text); font-weight: 600; font-size: 22px; line-height: 28px; color: var(--ink); letter-spacing: -.003em; text-wrap: balance; transition: opacity 120ms; }
+.ps-card .lbl .tier { font-family: var(--font-ui); font-weight: 500; font-size: 13px; letter-spacing: .12em; color: var(--bronze); margin-left: 2px; vertical-align: 2px; }
+.ps-card .hint { font-family: var(--font-text); font-size: 15px; line-height: 21px; color: var(--muted); margin-top: 7px; max-width: 290px; transition: opacity 120ms; }
+.ps-card .ear { position: absolute; right: 18px; bottom: 15px; opacity: .55; transition: opacity 120ms; }
+.ps-card.flying .lbl, .ps-card.flying .hint, .ps-card.flying .ear { opacity: 0; }
+.ps-card.flying::before { opacity: 0; }
+.ps-card.flying { pointer-events: none; } /* a quick second tap reaches the pile under the card in flight */
+.ps-card.hidden { visibility: hidden; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+.ps-card.enter { animation: cardIn 240ms var(--ease-out); }
+
+/* all sorted */
+.ps-done { position: absolute; left: 50%; top: 0; width: var(--card-w); height: var(--card-h); margin-left: calc(var(--card-w) / -2);
+  border: 1px dashed var(--rule); border-radius: 2px; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.ps.complete .ps-done { display: flex; animation: cardIn 300ms var(--ease-out); }
+.ps-done .n { font-family: var(--font-display); font-size: 54px; line-height: 1; color: var(--bronze); font-weight: 400; }
+.ps-done .cap { font-family: var(--font-ui); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); margin-top: 10px; }
+.ps-done .line { font-family: var(--font-text); font-size: 15px; color: var(--muted); margin-top: 12px; }
+
+/* ---------- piles (laptop row) ---------- */
+.ps-piles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.pile { position: relative; min-width: 0; }
+.pile-btn { all: unset; box-sizing: border-box; display: block; width: 100%; cursor: pointer; border-radius: 2px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.pile-btn:focus-visible .tray { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--navy); }
+.tray { position: relative; height: 92px; border-radius: 2px; background: var(--marble); border: 1px solid var(--rule-soft);
+  box-shadow: inset 0 2px 3px rgba(13,12,11,.05); transition: border-color 150ms, background-color 150ms, transform 150ms, box-shadow 150ms; }
+.pile-btn:hover .tray { border-color: var(--rule); }
+.pile.over .tray, .pile.peek .tray { border-color: var(--navy); background: #FFFFFF; box-shadow: 0 0 0 1px var(--navy), 0 8px 18px -10px rgba(20,35,59,.45); transform: translateY(-2px); }
+.pile.peek .tray { border-color: var(--forest); box-shadow: 0 0 0 1px var(--forest); }
+.pile[data-pile="critical"] .tray { border-color: rgba(138,97,22,.55); }
+.pile.thunk .tray { animation: thunk 220ms ease-out; }
+@keyframes thunk { 0%,100% { transform: translateY(0) } 45% { transform: translateY(3px) } }
+
+/* the stack starts below Change (5 + 24 + 2 px), so the button never sits on the cards it opens */
+.stack { position: absolute; left: 12px; right: 12px; bottom: 6px; top: 31px; pointer-events: none; z-index: 1; }
+.mini { position: absolute; left: 0; right: 0; height: var(--mini-h); border-radius: 2px;
+  background: var(--wheat-light); border: 1px solid rgba(138,97,22,.55); border-bottom-color: rgba(122,62,18,.85); box-shadow: 0 1px 0 rgba(13,12,11,.08);
+  font-family: var(--font-ui); font-size: 11px; line-height: 13px; color: var(--ink-2); padding: 3px 8px; overflow: hidden;
+  display: flex; align-items: center; }
+.mini span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.mini.top { height: auto; min-height: var(--mini-h); }
+.mini.land { animation: land 200ms var(--ease-out); }
+@keyframes land { from { transform: translateY(-7px); } to { transform: none; } }
+.pile[data-pile="not-hnw"] .mini { background: #E5E2DC; border-color: rgba(73,69,64,.38); border-bottom-color: rgba(73,69,64,.75); color: var(--muted); }
+.tray .empty { position: absolute; inset: 0; border: 1px dashed var(--rule-soft); border-radius: 2px; }
+
+.key { position: absolute; left: 5px; top: 5px; z-index: 3; display: grid; place-items: center; width: 16px; height: 16px; background: var(--paper);
+  border: 1px solid var(--rule-soft); border-radius: 2px; font-family: var(--font-ui); font-size: 11px; font-weight: 500; color: var(--muted); }
+.pl-name { margin-top: 9px; font-family: var(--font-ui); font-weight: 600; font-size: 13px; line-height: 16px; color: var(--ink); white-space: nowrap; }
+.pl-name .n { color: var(--muted); font-weight: 400; }
+.pl-gloss { font-family: var(--font-text); font-style: italic; font-size: 13px; line-height: 16px; color: var(--muted); margin-top: 4px; transition: color 250ms; }
+.pl-gloss mark { transition: background-size 400ms var(--ease-out); background-image: linear-gradient(rgba(210,169,78,.32), rgba(210,169,78,.32)); background-repeat: no-repeat; background-position: 0 88%; background-size: 0% 40%; }
+.ps.teach .pl-gloss { color: var(--ink); }
+.ps.teach .pl-gloss mark { background-size: 100% 40%; }
+/* Not for HNW: a light grey tint, nothing else (cooler and a shade darker than the marble, so it shows) */
+.pile[data-pile="not-hnw"] .tray { background: #E5E3DF; }
+
+/* Change: on every pile that holds cards, opens the pile (its fan) to sort a card again */
+.pile-open { position: absolute; top: 5px; right: 5px; z-index: 3; display: none; align-items: center; gap: 6px; height: 24px; padding: 0 9px 0 8px;
+  background: var(--ground); border: 1px solid var(--rule); border-radius: 2px; cursor: pointer; box-shadow: 0 1px 0 rgba(13,12,11,.06);
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: .01em; color: var(--ink-2);
+  transition: border-color 150ms, color 150ms, background-color 150ms; }
+.pile-open svg { flex: none; }
+.pile-open .po-n { display: none; }
+.pile-open:hover { border-color: var(--ink); color: var(--ink); }
+.pile-open:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
+.pile.has .pile-open { display: inline-flex; }
+.pile.peek .pile-open { border-color: var(--forest); color: var(--forest); }
+@keyframes openIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+.pile-open.fresh { animation: openIn 220ms var(--ease-out); }
+
+/* Undo: beside the card, once a card is sorted */
+.ps-undo { position: absolute; z-index: 6; left: calc(50% + var(--card-w) / 2 + 22px); top: calc(var(--card-h) - 36px); display: inline-flex; align-items: center; gap: 7px;
+  height: 36px; padding: 0 10px 0 9px; border: 1px solid var(--rule); border-radius: 2px; background: var(--ground); cursor: pointer;
+  box-shadow: 0 1px 0 rgba(13,12,11,.06); font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: var(--ink);
+  transition: border-color 150ms, background-color 150ms, opacity 160ms; }
+.ps-undo[hidden] { display: none; }
+.ps-undo:hover { border-color: var(--ink); background: #FBFAF8; }
+.ps-undo:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.ps-undo svg { flex: none; }
+.ps-undo .u-key { display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 3px; margin-left: 2px; border: 1px solid var(--rule-soft); border-radius: 2px;
+  background: var(--paper); font-size: 10.5px; font-weight: 500; color: var(--muted); }
+.ps-undo.fresh { animation: openIn 220ms var(--ease-out); }
+.ps.fanning .ps-undo { opacity: 0; pointer-events: none; }
+
+/* ---------- the fan (a pile opened over the card) ---------- */
+.ps-fan { position: absolute; inset: 0 0 auto 0; height: 100%; z-index: 8; display: none; }
+.ps.fanning .ps-fan { display: block; }
+.ps.fanning .ps-card, .ps.fanning .ps-deck, .ps.fanning .ps-done { opacity: 0; pointer-events: none; }
+.fan-head { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: center; align-items: baseline; gap: 10px;
+  font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+.fan-head b { color: var(--ink); font-weight: 600; }
+.fan-close { position: absolute; right: 0; top: -4px; background: none; border: 0; font-family: var(--font-ui); font-size: 13px; color: var(--muted);
+  cursor: pointer; padding: 4px 6px; text-decoration: underline; text-underline-offset: 3px; }
+.fan-card { position: absolute; width: 122px; height: 62px; padding: 7px 9px; border-radius: 2px; text-align: left; cursor: pointer;
+  background: var(--wheat-light); border: 1px solid rgba(138,97,22,.55); box-shadow: 0 6px 14px -8px rgba(13,12,11,.35);
+  font-family: var(--font-text); font-weight: 600; font-size: 13px; line-height: 16px; color: var(--ink);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms; }
+.fan-card:hover, .fan-card:focus-visible { box-shadow: 0 0 0 2px var(--navy), 0 12px 20px -10px rgba(13,12,11,.40); outline: none; z-index: 3; }
+.fan-card.grey { background: #E5E2DC; border-color: rgba(73,69,64,.38); }
+.fan-card span { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.tier { font-family: var(--font-ui); font-weight: 500; font-size: max(11px, .8em); letter-spacing: .1em; }
+.fan-card .tier { font-size: 11px; letter-spacing: .06em; }
+.ps-fan.tight .fan-card { font-size: 12px; line-height: 14px; padding: 5px 7px; }
+/* a pile whose fan needs more room than the stage: the fan takes the whole sorter (the piles hide, as on a phone) */
+.ps.fanning.fan-tall .ps-stage { position: absolute; left: 0; right: 0; top: 0; bottom: 0; height: auto; margin: 0; z-index: 8; }
+.ps.fanning.fan-tall .ps-piles { visibility: hidden; }
+.ps.fanning.fan-tall .ps-fan { background: var(--paper); }
+
+/* ---------- ghost hand ---------- */
+.ghost-hand { position: fixed; left: 0; top: 0; z-index: 70; pointer-events: none; opacity: 0; transform-origin: 0 0; }
+
+/* ================= phone ================= */
+@media (max-width: 700px) {
+  /* the card leaves room beside it for Undo on narrower phones too (260 px at 390 wide) */
+  :root { --card-w: min(260px, calc(100vw - 128px)); --card-h: 130px; --edge: 2px; }
+  .c-obj.ps-obj { padding: 8px 20px 0; }
+  .ps-stage { position: absolute; left: 0; right: 0; top: 50%; height: var(--card-h); margin-top: calc(var(--card-h) / -2 - 4px); }
+  .ps-card { padding: 0 20px 4px; }
+  .ps-card::before { inset: 5px; }
+  .ps-card .lbl { font-size: 18px; line-height: 23px; }
+  .ps-card .lbl .tier { font-size: 11px; }
+  .ps-card .grp, .ps-deck i.top .grp { font-size: 10px; line-height: 12px; letter-spacing: .12em; margin-bottom: 4px; }
+  .ps-card .hint { font-size: 13px; line-height: 17px; margin-top: 5px; max-width: 210px; }
+  .ps-card .ear { right: 12px; bottom: 10px; transform: scale(.8); transform-origin: 100% 100%; }
+  .ps-done .n { font-size: 40px; }
+  .ps-done .line { font-size: 13px; margin-top: 8px; }
+  .ps-piles { position: absolute; inset: 0; display: block; margin: 0; pointer-events: none; }
+  .pile { position: absolute; width: calc(50% - 5px); pointer-events: auto; }
+  .pile[data-pile="not-hnw"] { left: 0; top: 0; }
+  .pile[data-pile="nice"] { right: 0; top: 0; }
+  .pile[data-pile="core"] { left: 0; bottom: 0; }
+  .pile[data-pile="critical"] { right: 0; bottom: 0; }
+  .pile-btn { display: flex; align-items: center; gap: 9px; height: 56px; padding: 6px 10px 6px 8px; border-radius: 2px; background: var(--marble); border: 1px solid var(--rule-soft);
+    transition: border-color 150ms, background-color 150ms, transform 150ms, box-shadow 150ms; }
+  .pile[data-pile="critical"] .pile-btn { border-color: rgba(138,97,22,.55); }
+  .pile[data-pile="not-hnw"] .pile-btn { background: #E5E3DF; }
+  .pile.over .pile-btn, .pile.peek .pile-btn { border-color: var(--navy); background: #FFFFFF; box-shadow: 0 0 0 1px var(--navy), 0 8px 18px -10px rgba(20,35,59,.45); }
+  .pile.peek .pile-btn { border-color: var(--forest); box-shadow: 0 0 0 1px var(--forest); }
+  .pile.thunk .tray { animation: none; }
+  .pile.thunk .pl-count, .pile.thunk .po-n { animation: countPop 260ms cubic-bezier(.3,.7,.2,1.4); }
+  @keyframes countPop { 0% { transform: scale(.6); opacity: .4; } 100% { transform: none; opacity: 1; } }
+  .tray { position: relative; flex: none; width: 26px; height: 40px; background: none; border: 0; box-shadow: none; transform: none !important; }
+  .key { display: none; }
+  .ps-deck i.top { padding: 0 20px 4px; }
+  .ps-deck i.top .lbl { font-size: 18px; line-height: 23px; }
+  .ps-deck i.top .lbl .tier { font-size: 11px; }
+  .ps-deck i.top .hint { font-size: 13px; line-height: 17px; margin-top: 5px; max-width: 210px; }
+  .pile.over .tray, .pile.peek .tray { background: none; box-shadow: none; }
+  .tray .empty { inset: auto 0 0 0; height: 12px; border-radius: 1px; }
+  .stack { left: 0; right: 0; bottom: 0; top: 0; }
+  .mini { height: 12px; padding: 0; border-radius: 1px; }
+  .mini span { display: none; }
+  .pl-text { flex: 1; min-width: 0; }
+  .pl-name { display: block; margin: 0; font-size: 13px; line-height: 15px; white-space: normal; }
+  .pl-name .key, .pl-name .n { display: none; }
+  .pl-count { font-family: var(--font-text); font-weight: 600; font-size: 20px; line-height: 1; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); flex: none; min-width: 14px; text-align: right; }
+  /* the pile's box on the left of its chip: the count, and once the pile holds cards, Change (a button of its own: the
+     rest of the chip still takes the card) */
+  .pile-btn { position: relative; padding-left: 64px; }
+  .tray { display: none; }
+  .pl-count { position: absolute; left: 4px; top: 4px; bottom: 4px; width: 52px; display: grid; place-items: center; min-width: 0; text-align: center; color: var(--rule); }
+  .pile.has .pl-count { visibility: hidden; }
+  .pile-open { left: 4px; top: 4px; bottom: 4px; right: auto; width: 52px; height: auto; padding: 0 0 1px; flex-direction: column; justify-content: center; gap: 2px;
+    border-color: var(--rule); box-shadow: 0 1px 2px rgba(13,12,11,.10); }
+  .pile-open svg { display: none; }
+  .pile-open .po-n { display: block; font-family: var(--font-text); font-weight: 600; font-size: 19px; line-height: 19px; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; }
+  .pile-open .w { font-size: 10.5px; line-height: 12px; letter-spacing: .02em; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--rule); }
+  .pile.peek .pile-open .po-n { color: var(--forest); }
+  .ps.teach .pile-open { display: none; }
+  /* Undo: beside the card, at its foot, as on a laptop */
+  .ps-undo { left: calc(50% + var(--card-w) / 2 + 5px); top: auto; bottom: 0; width: 38px; height: 50px; padding: 0; flex-direction: column; justify-content: center; gap: 4px;
+    font-size: 11px; letter-spacing: .01em; }
+  .ps-undo .u-key { display: none; }
+  /* the glosses: taught once, inside the chips, during the ghost demo; never printed after */
+  .pl-gloss { display: none; margin: 2px 0 0; font-size: 12px; line-height: 14px; color: var(--ink-2); }
+  .pl-gloss mark { background: none !important; }
+  .ps.teach .pl-gloss { display: block; animation: glossIn 260ms var(--ease-out); }
+  .ps.teach .tray, .ps.teach .pl-count { display: none; }
+  .ps.teach .pile-btn { padding-left: 10px; }
+  .ps.teach .pl-name { font-size: 12.5px; line-height: 14px; }
+  @keyframes glossIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+  .fan-card { width: 104px; height: 48px; padding: 5px 7px; font-size: 12px; line-height: 14px; }
+  .ps.fanning .ps-piles { opacity: 0; pointer-events: none; transition: opacity 160ms; }
+  .ps.fanning .ps-stage { top: 0; bottom: 0; height: auto; margin: 0; }
+  .ps-fan { background: var(--paper); }
+  .fan-head { top: 2px; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 13px; line-height: 17px; padding-right: 60px; }
+  .fan-head b { font-size: 15px; }
+  .fan-close { top: 0; right: -6px; }
+}
+@media (min-width: 701px) { .pl-count { display: none; } }
+/* a band taller than 2.2's: the card, the stage and the trays step down once more, until the piles clear Next (fitStage) */
+@media (min-width: 701px) {
+  .ps.t1 { --card-h: 160px; } .ps.t1 .ps-stage { height: 172px; } .ps.t1 .tray { height: 80px; }
+  .ps.t1 .mini span { -webkit-line-clamp: 2; }
+}
+/* short laptops (the preview's frame is 614 px at 1280x650): the sorter tightens so the piles and glosses clear Next */
+@media (min-width: 701px) and (max-height: 760px) {
+  :root { --card-h: 120px; }
+  .c-obj.ps-obj { padding-top: 8px; }
+  .ps-stage { height: 132px; }
+  .ps-piles { margin-top: 4px; }
+  .tray { height: 70px; }
+  /* Change is smaller here and the stack starts below it (4 + 20 + 2 px); a top card's label keeps to two lines */
+  .stack { top: 26px; bottom: 5px; }
+  .pile-open { top: 4px; right: 4px; height: 20px; gap: 5px; padding: 0 7px 0 6px; font-size: 11.5px; }
+  .ps-card .lbl, .ps-deck i.top .lbl { font-size: 20px; line-height: 25px; }
+  .ps-card .hint, .ps-deck i.top .hint { font-size: 14px; line-height: 19px; margin-top: 4px; }
+  .ps-done .n { font-size: 44px; }
+  .ps-done .cap { margin-top: 6px; }
+  .ps-done .line { margin-top: 6px; }
+  .pl-name { margin-top: 6px; }
+  .pl-gloss { margin-top: 2px; line-height: 15px; }
+  .mini span { -webkit-line-clamp: 2; }
+  .ps.t1 { --card-h: 110px; } .ps.t1 .ps-stage { height: 120px; } .ps.t1 .tray { height: 64px; }
+}
+@media (prefers-reduced-motion: reduce) { .ps-card.enter, .mini.land, .pile.thunk .tray, .pile.thunk .pl-count, .pile.thunk .po-n, .pile-open.fresh, .ps-undo.fresh { animation: none; } }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'piles') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const ui = CeresPreview.mount(step, { objClass: 'ps-obj' })
+  const P = window.CeresPreview
+  const esc = P.esc
+  const D = step.data
+  const T = D.ui
+  const CARDS = D.cards
+  const PILES = D.piles
+  const BY = Object.fromEntries(CARDS.map((c) => [c.id, c]))
+  const PILE_BY = Object.fromEntries(PILES.map((p) => [p.id, p]))
+  const KEYS = D.keys ? +String(D.keys).split('-').pop() : 0
+  /* Screen-reader lines the QA'd mockup carries that script.js does not (see the return note). Undo and Change are the
+     script's (PILE_UI, v3). */
+  const MOCK = { cardAria: '{card}. Press 1 to 4 to choose a pile.',
+    placed: '{card}: {pile}. {left}', toGo: '{n} to go.', allSorted: 'All sorted.', back: '{card} is back. Choose a pile.' }
+  const UNDO_KEYS = 'Z'   // and Backspace (Cmd or Ctrl+Z too); shown on the button on a laptop
+  const fill = CeresNav.fill
+
+  /* shuffled with a fixed seed (the engine stores this as <store>.order) */
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+  const ORDER = (() => {
+    const a = CARDS.map((c) => c.id)
+    if (!D.shuffle) return a
+    const r = mulberry32(D.seed || 1)
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] }
+    return a
+  })()
+
+  /* ---------------- the object ---------------- */
+  const EAR = '<svg class="ear" width="18" height="34" viewBox="0 0 18 34" aria-hidden="true"><path d="M9 33 V8" stroke="#7A3E12" stroke-width="1"/><g fill="none" stroke="#7A3E12" stroke-width=".9"><ellipse cx="6.4" cy="22" rx="2" ry="3.8" transform="rotate(-28 6.4 22)"/><ellipse cx="11.6" cy="22" rx="2" ry="3.8" transform="rotate(28 11.6 22)"/><ellipse cx="6.4" cy="15.5" rx="2" ry="3.8" transform="rotate(-28 6.4 15.5)"/><ellipse cx="11.6" cy="15.5" rx="2" ry="3.8" transform="rotate(28 11.6 15.5)"/><ellipse cx="9" cy="6" rx="1.8" ry="3.8"/></g></svg>'
+  ui.obj.innerHTML = `
+    <div class="ps" id="ps">
+      <div class="ps-stage" id="stage">
+        <div class="ps-deck" id="deck" aria-hidden="true"></div>
+        <div class="ps-done" id="done" aria-live="polite"><div class="n">${CARDS.length}</div><div class="cap">${esc(T.doneCap)}</div><div class="line">${esc(T.doneLine)}</div></div>
+        <div class="ps-card" id="card" tabindex="0" role="group" aria-roledescription="card">
+          <div class="grp" id="cardGrp"></div>
+          <div class="lbl" id="cardLbl"></div>
+          <div class="hint" id="cardHint"></div>
+          ${EAR}
+        </div>
+        <div class="ps-fan" id="fan"></div>
+        <button type="button" class="ps-undo" id="undo" hidden title="${esc(T.undo || '')} (${UNDO_KEYS})"><svg width="15" height="13" viewBox="0 0 15 13" aria-hidden="true"><path d="M4.6 1.2 1.3 4.5l3.3 3.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.6 4.5h7.1a4.4 4.4 0 0 1 0 8.8H6.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>${esc(T.undo || '')}<span class="u-key" aria-hidden="true">${UNDO_KEYS}</span></button>
+      </div>
+      <div class="ps-piles" id="piles"></div>
+    </div>
+    <p class="sr" id="live" aria-live="polite"></p>`
+
+  /* ---------------- state ---------------- */
+  let S
+  // order: the sorted cards in the order they were placed (Undo takes the last one back)
+  function fresh() { return { queue: ORDER.slice(), pile: Object.fromEntries(PILES.map((p) => [p.id, []])), order: [], fan: null, busy: false, pending: [] } }
+  S = fresh()
+  // the reviewer's own answer, if any: { cardId: pileId }, saved in placement order (so Undo works after a reload too)
+  const saved = ui.load()
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+    Object.keys(saved).forEach((id) => { const pid = saved[id]; if (BY[id] && S.pile[pid] && S.queue.includes(id)) { S.pile[pid].push(id); S.order.push(id); S.queue = S.queue.filter((x) => x !== id) } })
+  }
+
+  const $ = (id) => document.getElementById(id)
+  const ps = $('ps'), card = $('card'), deck = $('deck'), pilesEl = $('piles'), fanEl = $('fan'), undoBtn = $('undo')
+  const isPhone = () => window.matchMedia('(max-width: 700px)').matches
+  const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  function say(t) { $('live').textContent = t }
+  const pileOf = (id) => PILES.find((p) => S.pile[p.id].includes(id))
+  function answer() { const o = {}; S.order.forEach((id) => { const p = pileOf(id); if (p) o[id] = p.id }); return o }
+  // nothing sorted (every card undone or sent back): no answer, so later screens use the sample, as if unplayed
+  function store() { const a = answer(); ui.save(Object.keys(a).length ? a : undefined) }
+
+  /* ---------------- piles ---------------- */
+  const fanIcon = '<svg width="14" height="11" viewBox="0 0 14 11" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1"><rect x="1.2" y="2.6" width="5" height="7" rx=".6" transform="rotate(-16 3.7 6.1)"/><rect x="4.5" y="1.5" width="5" height="7" rx=".6"/><rect x="7.8" y="2.6" width="5" height="7" rx=".6" transform="rotate(16 10.3 6.1)"/></g></svg>'
+  function buildPiles() {
+    pilesEl.innerHTML = ''
+    PILES.forEach((p, i) => {
+      const el = document.createElement('div')
+      el.className = 'pile'; el.dataset.pile = p.id
+      el.innerHTML = `
+        <button type="button" class="pile-btn" data-k="${i + 1}">
+          <div class="tray">${KEYS ? `<span class="key" aria-hidden="true">${i + 1}</span>` : ''}<div class="stack"></div></div>
+          <div class="pl-text">
+            <div class="pl-name"><span class="nm">${esc(p.label)}</span> <span class="n"></span></div>
+            <div class="pl-gloss"><mark>${esc(p.gloss)}</mark></div>
+          </div>
+          <span class="pl-count" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="pile-open" aria-label="${esc(T.change + ': ' + p.label)}"><span class="po-n" aria-hidden="true"></span>${fanIcon}<span class="w">${esc(T.change)}</span></button>`
+      pilesEl.appendChild(el)
+      const btn = el.querySelector('.pile-btn')
+      btn.addEventListener('click', (e) => { if (e.detail > 0) btn.blur(); onPileTap(p.id) })
+      el.querySelector('.pile-open').addEventListener('click', (e) => { e.stopPropagation(); toggleFan(p.id) })
+      // phone: a long press opens the pile while sorting
+      let lp = 0
+      btn.addEventListener('pointerdown', () => { lp = setTimeout(() => { lp = -1; toggleFan(p.id) }, 480) })
+      const clr = () => { if (lp > 0) clearTimeout(lp) }
+      btn.addEventListener('pointerup', clr); btn.addEventListener('pointerleave', clr); btn.addEventListener('pointercancel', clr)
+      btn.addEventListener('click', (e) => { if (lp === -1) { lp = 0; e.stopImmediatePropagation() } }, true)
+    })
+  }
+  function hash(str) { let h = 7; for (const c of str) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h }
+  function pileEl(id) { return pilesEl.querySelector(`.pile[data-pile="${id}"]`) }
+  function miniBottom(i) { return i * (isPhone() ? 2 : 3) }
+  function drawStacks(landed) {
+    PILES.forEach((p) => {
+      const el = pileEl(p.id), list = S.pile[p.id], stack = el.querySelector('.stack')
+      stack.innerHTML = ''
+      if (!list.length) { const e = document.createElement('div'); e.className = 'empty'; stack.appendChild(e) }
+      list.forEach((id, i) => {
+        const m = document.createElement('div'); m.className = 'mini' + (i === list.length - 1 && !isPhone() ? ' top' : '')
+        m.style.bottom = miniBottom(i) + 'px'; m.style.zIndex = i + 1
+        if (!isPhone() && i < list.length - 1) { const h = hash(id); m.style.transform = `translateX(${(h % 5) - 2}px) rotate(${((h >> 3) % 7 - 3) * 0.25}deg)` }
+        if (i === list.length - 1) m.innerHTML = `<span>${esc(BY[id].label)}</span>`
+        if (landed === id) m.classList.add('land')
+        stack.appendChild(m)
+      })
+      // a tall label on a very tall stack: tighten the edges just enough to stay inside the tray
+      const top = stack.lastElementChild
+      if (top && top.classList.contains('top') && list.length > 1) {
+        const room = stack.clientHeight - top.offsetHeight
+        const edge = Math.max(0, Math.min(3, room / (list.length - 1)))
+        if (edge < 3) [...stack.children].forEach((m, i) => { m.style.bottom = (i * edge) + 'px' })
+      }
+      el.querySelector('.n').textContent = `(${list.length})`
+      el.querySelector('.pl-count').textContent = list.length
+      el.querySelector('.po-n').textContent = list.length
+      const had = el.classList.contains('has')
+      el.classList.toggle('has', list.length > 0)
+      if (!had && list.length && !reduced()) { const o = el.querySelector('.pile-open'); o.classList.remove('fresh'); void o.offsetWidth; o.classList.add('fresh') }
+      el.querySelector('.pile-btn').setAttribute('aria-label', `${p.label} (${list.length}). ${p.gloss}.`)
+    })
+  }
+  /* where the next card lands on a pile, measured from a probe in the real stack */
+  function slotRect(pid) {
+    if (isPhone()) return countBox(pid)   // a phone's chip has no tray: the card lands on the pile's count box
+    const stack = pileEl(pid).querySelector('.stack')
+    const m = document.createElement('div'); m.className = 'mini'; m.style.visibility = 'hidden'
+    m.style.bottom = miniBottom(S.pile[pid].length) + 'px'
+    stack.appendChild(m); const r = m.getBoundingClientRect(); m.remove(); return r
+  }
+
+  /* a phone chip's box on the left (the count, or Change) */
+  function countBox(pid) {
+    const r = pileEl(pid).querySelector('.pile-btn').getBoundingClientRect()
+    return { left: r.left + 4, top: r.top + 4, width: 52, height: r.height - 8, right: r.left + 56, bottom: r.bottom - 4 }
+  }
+
+  /* ---------------- the card ---------------- */
+  function cur() { return S.queue[0] }
+  // "J.P. Morgan" stays on one line (6.3, 7.2), as in the band
+  function cardLabelHTML(lbl) { return P.glue(lbl).replace(/\(([A-Z]{3,})\)/, '<span class="tier">($1)</span>') }
+  function drawCard(enter) {
+    const id = cur()
+    ps.classList.toggle('complete', !id)
+    card.classList.toggle('hidden', !id)
+    card.classList.remove('flying', 'dragging')
+    card.style.transform = ''
+    if (id) {
+      $('cardGrp').textContent = BY[id].group || ''
+      $('cardLbl').innerHTML = cardLabelHTML(BY[id].label)
+      $('cardHint').textContent = BY[id].hint || ''
+      card.setAttribute('aria-label', fill(MOCK.cardAria, { card: (BY[id].group ? BY[id].group + '. ' : '') + BY[id].label + (BY[id].hint ? '. ' + BY[id].hint : '') }))
+      if (enter && !reduced()) { card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter') }
+    }
+    // the deck: edges of the cards still to come
+    const left = Math.max(0, Math.min(S.queue.length - 1, 5))
+    deck.innerHTML = ''
+    const st = isPhone() ? 2 : 3
+    for (let i = left; i >= 1; i--) {
+      const e = document.createElement('i'); e.style.transform = `translateY(${i * st}px)`
+      if (i === 1 && S.queue[1]) { const nx = BY[S.queue[1]]; e.className = 'top'; e.innerHTML = `<div class="grp">${esc(nx.group || '')}</div><div class="lbl">${cardLabelHTML(nx.label)}</div><div class="hint">${esc(nx.hint || '')}</div>` }
+      deck.appendChild(e)
+    }
+  }
+  function drawNext() {
+    const n = S.queue.length
+    if (n > 0) ui.status(false, fill(T.missing, { n }))
+    else ui.status(true)
+  }
+  function drawUndo() {
+    const show = S.order.length > 0
+    if (show && undoBtn.hidden && !reduced()) { undoBtn.classList.remove('fresh'); void undoBtn.offsetWidth; undoBtn.classList.add('fresh') }
+    undoBtn.hidden = !show
+  }
+  function drawAll(landed) { drawStacks(landed); drawCard(false); drawNext(); drawUndo() }
+
+  /* ---------------- placing ---------------- */
+  // The card is sorted (and the answer stored) the moment a pile is chosen; the flight only draws it. So Next, Back or
+  // the Contents link pressed while a card is in the air never lose it, and settle() sorts any quick taps still queued.
+  let flight = null
+  async function place(pid, fromTransform) {
+    if (S.busy) { // queue it (for the next card in the deck) and hurry the card in the air
+      if (!fromTransform && S.queue.length > S.pending.length) S.pending.push(pid)
+      if (flight) flight.playbackRate = 2.5
+      return
+    }
+    const id = cur()
+    if (!id) return
+    S.busy = true
+    closeFan(true)
+    const base = baseRect
+    const tgt = slotRect(pid)   // measured before the card joins the pile: where it will land
+    S.queue.shift(); S.pile[pid].push(id); S.order.push(id); store()
+    if (!reduced()) {
+      card.classList.add('flying')
+      const sx = tgt.width / base.width, sy = tgt.height / base.height
+      const tx = (tgt.left + tgt.width / 2) - (base.left + base.width / 2)
+      const ty = (tgt.top + tgt.height / 2) - (base.top + base.height / 2)
+      const a = card.animate([{ transform: fromTransform || 'none' }, { transform: `translate(${tx}px, ${ty}px) scale(${sx}, ${sy})` }],
+        { duration: fromTransform ? 260 : 340, easing: 'cubic-bezier(.3,.7,.2,1)', fill: 'forwards' })
+      flight = a
+      if (S.pending.length) a.playbackRate = 2.5
+      await a.finished
+      flight = null
+      a.cancel()
+    }
+    S.busy = false
+    const pe = pileEl(pid); pe.classList.remove('thunk'); void pe.offsetWidth; pe.classList.add('thunk')
+    drawStacks(id); drawCard(true); drawNext(); drawUndo()
+    say(fill(MOCK.placed, { card: BY[id].label, pile: PILE_BY[pid].label, left: S.queue.length ? fill(MOCK.toGo, { n: S.queue.length }) : MOCK.allSorted }))
+    if (S.pending.length && cur()) { measureBase(); place(S.pending.shift()) }
+  }
+  // Next, Back or leaving the page with taps still queued behind the card in the air: sort those cards now
+  function settle() {
+    if (!S.pending.length) return
+    while (S.pending.length && S.queue.length) { const pid = S.pending.shift(), id = S.queue.shift(); S.pile[pid].push(id); S.order.push(id) }
+    S.pending.length = 0
+    store()
+  }
+  ui.onNext(() => { settle() })   // nothing returned: the frame goes on
+  ui.onBack(() => { settle() })
+  window.addEventListener('pagehide', settle)
+  let baseRect = null
+  function measureBase() { const t = card.style.transform; card.style.transform = ''; baseRect = card.getBoundingClientRect(); card.style.transform = t }
+
+  function onPileTap(pid) {
+    if (DR) return   // a card is held: its release decides where it goes
+    if (S.busy) { if (!S.fan) place(pid); return }
+    if (S.fan) { const same = S.fan === pid; closeFan(); if (same || !cur()) return }
+    if (!cur()) { toggleFan(pid); return }
+    stopGhost()
+    measureBase(); place(pid)
+  }
+
+  /* ---------------- dragging the card ---------------- */
+  let DR = null
+  const SNAP = 24
+  card.addEventListener('pointerdown', (e) => {
+    if (S.busy || !cur() || (e.button !== undefined && e.button !== 0)) return
+    stopGhost()
+    measureBase()
+    card.setPointerCapture(e.pointerId)
+    const ox = e.clientX - (baseRect.left + baseRect.width / 2), oy = e.clientY - (baseRect.top + baseRect.height / 2)
+    DR = { sx: e.clientX, sy: e.clientY, ox, oy, moved: false, over: null, tf: '',
+      rects: PILES.map((p) => ({ id: p.id, r: (isPhone() ? pileEl(p.id).querySelector('.pile-btn') : pileEl(p.id).querySelector('.tray')).getBoundingClientRect() })) }
+  })
+  card.addEventListener('pointermove', (e) => {
+    if (!DR) return
+    const dx = e.clientX - DR.sx, dy = e.clientY - DR.sy
+    if (!DR.moved && Math.hypot(dx, dy) < 6) return
+    if (!DR.moved) { DR.moved = true; card.classList.add('dragging'); card.classList.remove('enter') }
+    const phone = isPhone()
+    let over = null
+    if (phone) over = phoneTarget(dx, dy, e.clientX, e.clientY)
+    else for (const p of DR.rects) { const r = p.r; if (e.clientX > r.left - SNAP && e.clientX < r.right + SNAP && e.clientY > r.top - SNAP && e.clientY < r.bottom + SNAP) { over = p.id; break } }
+    // scale down as the card nears the piles, keeping the grabbed point under the pointer
+    let s = phone ? 1 - Math.min(0.28, Math.hypot(dx, dy) / 520) : Math.max(0.5, Math.min(1, 1 - Math.max(0, dy) / 420))
+    let tx = dx + (1 - s) * DR.ox, ty = dy + (1 - s) * DR.oy
+    if (over) {
+      // magnetic: pull toward the pile, and shrink so its highlight stays visible
+      s = Math.min(s, phone ? 0.46 : 0.42)
+      tx = dx + (1 - s) * DR.ox; ty = dy + (1 - s) * DR.oy
+      const r = DR.rects.find((p) => p.id === over).r
+      const cx = baseRect.left + baseRect.width / 2 + tx, cy = baseRect.top + baseRect.height / 2 + ty
+      tx += 0.35 * ((r.left + r.width / 2) - cx); ty += 0.35 * ((r.top + r.height / 2) - cy)
+    }
+    const rot = Math.max(-5, Math.min(5, dx / (phone ? 22 : 45)))
+    DR.tf = `translate(${tx}px, ${ty}px) rotate(${rot}deg) scale(${s})`
+    card.style.transform = DR.tf
+    if (over !== DR.over) { DR.over = over; PILES.forEach((p) => pileEl(p.id).classList.toggle('over', p.id === over)) }
+  })
+  function endDrag(e, cancelled) {
+    if (!DR) return
+    const d = DR; DR = null
+    PILES.forEach((p) => pileEl(p.id).classList.remove('over'))
+    card.classList.remove('dragging')
+    if (!d.moved) return
+    if (!cancelled && d.over) { card.style.transform = ''; place(d.over, d.tf); return }
+    // spring back
+    card.style.transform = ''
+    if (!reduced()) card.animate([{ transform: d.tf }, { transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.34,1.45,.64,1)' })
+  }
+  card.addEventListener('pointerup', (e) => endDrag(e, false))
+  card.addEventListener('pointercancel', (e) => endDrag(e, true))
+
+  /* phone: swipe toward a corner. Near-vertical swipes (within 20 degrees) never pick a corner. */
+  function phoneTarget(dx, dy, x, y) {
+    const fromVertical = Math.atan2(Math.abs(dx), Math.abs(dy)) * 180 / Math.PI
+    if (fromVertical < 20) return null
+    // the finger, or the middle of the travelling card, within 24 px of a chip
+    const cx = baseRect.left + baseRect.width / 2 + dx, cy = baseRect.top + baseRect.height / 2 + dy
+    const near = (r, px, py) => px > r.left - SNAP && px < r.right + SNAP && py > r.top - SNAP && py < r.bottom + SNAP
+    for (const p of DR.rects) if (near(p.r, x, y)) return p.id
+    for (const p of DR.rects) if (near(p.r, cx, cy)) return p.id
+    return null
+  }
+
+  /* ---------------- keyboard: 1-4 sort, Z or Backspace undoes, Escape closes a fan (Enter and Alt+arrows are the frame's) ---------------- */
+  window.addEventListener('keydown', (e) => {
+    const zKey = e.key === 'z' || e.key === 'Z'
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && zKey) { e.preventDefault(); undo(); return }   // Cmd or Ctrl+Z too
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    if (e.key === 'Escape' && S.fan) { closeFan(); return }
+    if (zKey || e.key === 'Backspace') { e.preventDefault(); if (!e.repeat) undo(); return }
+    if (KEYS && /^[1-9]$/.test(e.key) && +e.key <= Math.min(KEYS, PILES.length) && cur() && !DR) {
+      e.preventDefault(); stopGhost(); if (S.fan) closeFan(true)
+      if (!S.busy) measureBase()
+      place(PILES[+e.key - 1].id)
+    }
+  })
+
+  /* ---------------- the fan: open a pile, tap a card to sort it again ---------------- */
+  function toggleFan(pid) { if (S.fan === pid) closeFan(); else openFan(pid) }
+  function closeFan() {
+    if (!S.fan) return
+    pileEl(S.fan).classList.remove('peek')
+    S.fan = null; ps.classList.remove('fanning', 'fan-tall'); fanEl.classList.remove('tight'); fanEl.innerHTML = ''
+  }
+  function openFan(pid) {
+    if (S.busy) return
+    const list = S.pile[pid]
+    if (!list.length) return
+    stopGhost()
+    if (S.fan) closeFan(true)
+    S.fan = pid
+    ps.classList.add('fanning')
+    pileEl(pid).classList.add('peek')
+    const PL = PILE_BY[pid]
+    fanEl.innerHTML = `<div class="fan-head"><span><b>${esc(PL.label)} (${list.length})</b></span><span>${esc(T.fanHint)}</span></div><button type="button" class="fan-close">${esc(T.fanClose)}</button>`
+    fanEl.querySelector('.fan-close').addEventListener('click', () => closeFan())
+    const phone = isPhone()
+    const cw = phone ? 104 : 122, per = phone ? 3 : 5
+    const gapX = phone ? 8 : 14, topPad = phone ? 50 : 30
+    const cards = list.map((id) => {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'fan-card' + (pid === 'not-hnw' ? ' grey' : '')
+      b.innerHTML = `<span>${cardLabelHTML(BY[id].label)}</span>`
+      b.setAttribute('aria-label', fill(T.fanCardAria, { card: BY[id].label }))
+      b.addEventListener('click', () => bringBack(id, b))
+      fanEl.appendChild(b)
+      return b
+    })
+    // each card is as tall as its label needs; a fan that does not fit the stage takes the whole sorter, then tightens
+    let gapY = phone ? 8 : 10
+    const measure = () => {
+      const minH = fanEl.classList.contains('tight') ? (phone ? 42 : 50) : (phone ? 48 : 62)
+      cards.forEach((b) => { b.style.width = cw + 'px'; b.style.height = 'auto'; b.style.minHeight = minH + 'px' })
+      const rowH = []
+      cards.forEach((b, i) => { const r = Math.floor(i / per); rowH[r] = Math.max(rowH[r] || 0, b.offsetHeight) })
+      return rowH
+    }
+    let rowH = measure()
+    const need = () => topPad + rowH.reduce((x, y) => x + y, 0) + (rowH.length - 1) * gapY + 4
+    if (need() > fanEl.clientHeight) { fanEl.classList.add('tight'); rowH = measure() }
+    if (need() > fanEl.clientHeight && !phone) { ps.classList.add('fan-tall'); fanEl.classList.remove('tight'); rowH = measure() }
+    if (need() > fanEl.clientHeight) { fanEl.classList.add('tight'); rowH = measure() }
+    while (need() > fanEl.clientHeight && gapY > 4) gapY--
+    const W = fanEl.clientWidth, H = fanEl.clientHeight
+    const blockH = need() - topPad - 4
+    const y0 = topPad + Math.max(0, (H - topPad - blockH) / 2 - (phone ? 0 : 6))
+    const from = pileEl(pid).querySelector(phone ? '.pile-btn' : '.tray').getBoundingClientRect(), fr = fanEl.getBoundingClientRect()
+    cards.forEach((b, i) => {
+      const row = Math.floor(i / per), inRow = Math.min(per, list.length - row * per), k = i - row * per
+      const mid = (inRow - 1) / 2
+      const x = (W - (inRow * cw + (inRow - 1) * gapX)) / 2 + k * (cw + gapX)
+      const ch = rowH[row]
+      const y = y0 + rowH.slice(0, row).reduce((a, h) => a + h + gapY, 0) + Math.pow(k - mid, 2) * (phone ? 1.5 : 2.5)
+      const rot = (k - mid) * (phone ? 2.2 : 3)
+      b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.height = ch + 'px'; b.style.transform = `rotate(${rot}deg)`
+      if (!reduced()) {
+        const fx = from.left + from.width / 2 - (fr.left + x + cw / 2), fy = from.top + from.height / 2 - (fr.top + y + ch / 2)
+        b.animate([{ transform: `translate(${fx}px, ${fy}px) rotate(0deg) scale(.5)`, opacity: 0 }, { transform: `rotate(${rot}deg)`, opacity: 1 }],
+          { duration: 300, delay: i * 22, easing: 'cubic-bezier(.3,.7,.2,1)', fill: 'backwards' })
+      }
+    })
+    const first = fanEl.querySelector('.fan-card'); if (first) first.focus({ preventScroll: true })
+  }
+  function bringBack(id, fromEl) {
+    if (DR) return   // a card is held
+    const pid = S.fan
+    const from = fromEl.getBoundingClientRect()
+    S.pile[pid] = S.pile[pid].filter((x) => x !== id)
+    S.order = S.order.filter((x) => x !== id)
+    S.queue.unshift(id)
+    closeFan(true)
+    drawStacks(); drawCard(false); drawNext(); drawUndo(); store()
+    flyBack(from)
+    card.focus({ preventScroll: true })
+    say(fill(MOCK.back, { card: BY[id].label }))
+  }
+  /* the card flies from where it was (a fan card, or the top of its pile) back to the top of the deck */
+  function flyBack(from) {
+    measureBase()
+    if (reduced() || !from.width) return
+    const sx = from.width / baseRect.width, sy = from.height / baseRect.height
+    const tx = (from.left + from.width / 2) - (baseRect.left + baseRect.width / 2), ty = (from.top + from.height / 2) - (baseRect.top + baseRect.height / 2)
+    card.classList.add('flying')
+    const a = card.animate([{ transform: `translate(${tx}px, ${ty}px) scale(${sx}, ${sy})` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.3,.7,.2,1)' })
+    a.onfinish = () => card.classList.remove('flying')
+  }
+
+  /* ---------------- Undo: the last sorted card goes back on top of the deck, and the answer with it ---------------- */
+  function undo() {
+    if (S.busy || DR || !S.order.length) return   // never while a card is held: its release would sort the wrong card
+    stopGhost()
+    if (S.fan) closeFan()
+    const id = S.order[S.order.length - 1]
+    const p = pileOf(id)
+    S.order.pop()
+    if (!p) { drawUndo(); return }
+    // it lifts off the top of its pile (on a phone, off the pile's chip)
+    const top = pileEl(p.id).querySelector('.stack .mini:last-child')
+    const from = isPhone() ? countBox(p.id) : (top || pileEl(p.id).querySelector('.tray')).getBoundingClientRect()
+    S.pile[p.id] = S.pile[p.id].filter((x) => x !== id)
+    S.queue.unshift(id)
+    const hadFocus = document.activeElement === undoBtn
+    drawStacks(); drawCard(false); drawNext(); drawUndo(); store()
+    flyBack(from)
+    if (hadFocus && undoBtn.hidden) card.focus({ preventScroll: true })   // keyboard: the focus never drops to the page
+    say(fill(MOCK.back, { card: BY[id].label }))
+  }
+  // a mouse click leaves no focus behind, so Enter after it goes to Next (as on the piles)
+  undoBtn.addEventListener('click', (e) => { if (e.detail > 0) undoBtn.blur(); undo() })
+
+  /* ---------------- ghost demo (once, the first time the piles appear: here, when nothing is sorted yet) ---------------- */
+  const HAND = '<svg width="44" height="54" viewBox="0 0 44 54" style="transform:translate(-11px,-3px);filter:drop-shadow(0 6px 10px rgba(13,12,11,.22))"><path d="M11 4.5c0-2.2 1.8-4 4-4s4 1.8 4 4v16.2l1.3-.6c2-.9 4.3.1 5.1 2.1l.2.5 1.1-.4c2-.7 4.2.3 5 2.3l.3.8.8-.3c2-.6 4.1.5 4.7 2.5l.8 2.7c1.3 4.4.9 9.2-1.2 13.3L35.6 49c-1.8 3.3-5.3 5-9 5h-5.7c-3.3 0-6.4-1.6-8.3-4.3L3 36.3c-1.3-1.8-.9-4.3.9-5.6 1.7-1.3 4.1-1 5.5.6L11 33V4.5z" fill="#F8F7F4" fill-opacity=".92" stroke="#0D0C0B" stroke-opacity=".75" stroke-width="1.6" stroke-linejoin="round"/><path d="M19 21v9M26 23v7M33 26v5" stroke="#0D0C0B" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"/></svg>'
+  let G = null
+  function ghostGeometry() {
+    measureBase()
+    const a = { x: baseRect.left + baseRect.width / 2, y: baseRect.top + baseRect.height / 2 + (isPhone() ? 10 : 18) }
+    const t = pileEl('core').querySelector(isPhone() ? '.pile-btn' : '.tray').getBoundingClientRect()
+    const b = { x: t.left + t.width / 2, y: t.top + t.height / 2 }
+    return { a, c: { x: a.x + (b.x - a.x) * 0.6, y: a.y + (b.y - a.y) * 0.6 } }
+  }
+  function ghostPose(u, o) { // u: 0 at rest, 1 at 60% of the way to Core
+    const { a, c } = G.geo
+    const x = a.x + (c.x - a.x) * u, y = a.y + (c.y - a.y) * u
+    const s = 1 - (isPhone() ? 0.3 : 0.42) * u
+    card.style.transform = u ? `translate(${x - a.x}px, ${y - a.y}px) rotate(${-3 * u}deg) scale(${s})` : ''
+    G.hand.style.transform = `translate(${x}px, ${y}px) scale(${u > 0 ? 0.92 : 1})`
+    G.hand.style.opacity = String(o)
+    pileEl('core').classList.toggle('peek', u > 0.35)
+  }
+  function startGhost() {
+    stopGhost()
+    if (!cur() || !pileEl('core')) return
+    const hand = document.createElement('div'); hand.className = 'ghost-hand'; hand.innerHTML = HAND; hand.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(hand)
+    G = { hand, raf: 0, timers: [], geo: ghostGeometry() }
+    ps.classList.add('teach')
+    if (reduced()) { ghostPose(0, 0); G.timers.push(setTimeout(stopGhost, 3000)); return }
+    const DUR = 1700, t0 = performance.now() + 400
+    const ease = (u) => 1 - Math.pow(1 - u, 3), spring = (u) => 1 - Math.exp(-6 * u) * Math.cos(9 * u)
+    const frame = (now) => {
+      if (!G) return
+      const t = (now - t0) / DUR
+      if (t < 0) { G.raf = requestAnimationFrame(frame); return }
+      let u = 0, o = 0.9
+      if (t < 0.2) o = 0.9 * (t / 0.2)
+      else if (t < 0.6) u = ease((t - 0.2) / 0.4)
+      else if (t < 0.88) u = 1 - Math.min(1.08, spring((t - 0.6) / 0.28))
+      else { u = 0; o = 0.9 * Math.max(0, 1 - (t - 0.88) / 0.12) }
+      ghostPose(Math.max(-0.05, u), o)
+      if (t >= 1) { ghostPose(0, 0); G.hand.remove(); G.hand = document.createElement('div'); return }
+      G.raf = requestAnimationFrame(frame)
+    }
+    G.raf = requestAnimationFrame(frame)
+    G.timers.push(setTimeout(stopGhost, 3000)) // the glosses show for 3 seconds
+  }
+  function stopGhost() {
+    if (!G) return
+    cancelAnimationFrame(G.raf); G.timers.forEach(clearTimeout)
+    G.hand.remove(); G = null
+    ps.classList.remove('teach'); const core = pileEl('core'); if (core) core.classList.remove('peek')
+    if (!DR) card.style.transform = ''
+  }
+  ;['pointerdown', 'wheel', 'touchstart'].forEach((ev) => window.addEventListener(ev, () => { if (G) stopGhost() }, { capture: true, passive: true }))
+
+  /* ---------------- fit: one size for every sort; a band taller than 2.2's steps the card and the trays down ---------------- */
+  function fitStage() {
+    ps.classList.remove('t1')
+    if (!isPhone() && ui.obj.scrollHeight > ui.obj.clientHeight + 1) ps.classList.add('t1')
+    drawStacks()
+  }
+
+  /* ---------------- boot ---------------- */
+  buildPiles(); drawAll(); fitStage()
+  let lastPhone = isPhone()
+  window.addEventListener('resize', () => { const p = isPhone(); if (p !== lastPhone) { lastPhone = p; stopGhost(); closeFan(true); drawAll() } fitStage() })
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitStage)
+  const nothingSorted = S.queue.length === CARDS.length
+  if (nothingSorted) (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(startGhost, 50))
+  // test hook (not used by the page): the state, read-only
+  window.__piles = { state: () => S, answer }
+})()
+</script>
+</body>
+</html>

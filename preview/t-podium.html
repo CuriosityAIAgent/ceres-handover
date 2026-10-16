@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-podium: the top-3 podium of compact tiles (3.2; 2.2a, 2.5a, 6.3a, 7.2a from the parent's Critical pile) and, above 8
+   Critical cards, the pick in the fanned pile (tap 1, 2, 3; a gold disc marks each). Ported from mockups/piles.html
+   (podium, fan). Page-only CSS; the shared frame is untouched. */
+:root { --ease-out: cubic-bezier(.3,.7,.2,1); }
+.c-obj.pd-obj { padding: 16px 24px 0; position: relative; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes thunk { 0%,100% { transform: translateY(0) } 45% { transform: translateY(3px) } }
+.tier { font-family: var(--font-ui); font-weight: 500; font-size: max(11px, .8em); letter-spacing: .1em; }
+
+/* ---------- the podium (compact) ---------- */
+.pd { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding-bottom: 6px; }
+.pd.enter { animation: cardIn 320ms var(--ease-out); }
+.pd-stand { display: flex; align-items: flex-end; justify-content: center; width: 100%; max-width: 560px; margin: 0 auto; }
+.pd-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pd-slotwrap { padding: 0 6px 7px; }
+.pd-slot { --sh: 58px; height: var(--sh); border-radius: 2px; border: 1px dashed var(--rule); display: flex; align-items: center; justify-content: center; text-align: center;
+  font-family: var(--font-ui); font-size: 12.5px; color: transparent; transition: border-color 150ms, background-color 150ms; padding: 0 10px; cursor: default; }
+.pd-slot.next { border-color: var(--forest); color: var(--forest); background: rgba(31,75,58,.04); }
+.pd-slot.over { border-color: var(--navy); border-style: solid; background: rgba(20,35,59,.05); color: var(--navy); }
+.pd-tile-on { all: unset; box-sizing: border-box; width: 100%; --sh: 58px; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center;
+  background: var(--wheat-light); border: 1px solid var(--ink); box-shadow: 0 3px 6px rgba(13,12,11,.12);
+  font-family: var(--font-text); font-weight: 600; font-size: 14.5px; line-height: 17px; color: var(--ink); padding: 0 10px; touch-action: none; }
+.pd-slot { height: var(--sh); }
+.pd-tile-on { height: auto; min-height: var(--sh); padding-top: 4px; padding-bottom: 4px; }
+.pd-tile-on:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.pd-tile-on.target { border-color: var(--bronze); }
+.pd-step { position: relative; background: var(--marble); border-radius: 2px 2px 0 0;
+  box-shadow: inset 0 1px 0 #FFFFFF, inset 1px 0 0 #F6F3EE, inset -1px 0 0 #DCD6CB; display: flex; justify-content: center; }
+.pd-col:nth-child(2) .pd-step { box-shadow: inset 0 1px 0 #FFFFFF, inset 1px 0 0 #DDD9D2, inset -1px 0 0 #DDD9D2; }
+.pd-step span { font-family: var(--font-display); font-variation-settings: 'opsz' 24; font-size: 21px; line-height: 1; color: var(--ink); margin-top: 11px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pd-step span i { width: 20px; height: 2px; background: var(--wheat); display: block; }
+.pd-step.bump { animation: thunk 220ms ease-out; }
+.pd-base { height: 5px; width: 100%; max-width: 584px; margin: 0 auto; background: #D8D2C6; border-radius: 1px; flex: none; }
+.pd-msg { height: 18px; margin: 10px 0 0; text-align: center; font-family: var(--font-ui); font-size: 13px; font-weight: 500; color: var(--bronze); opacity: 0; transition: opacity 200ms; flex: none; }
+.pd-msg.on { opacity: 1; }
+.pd-tiles { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 8px; margin-top: 6px; }
+.pd-tile { all: unset; box-sizing: border-box; position: relative; min-height: 56px; padding: 8px 12px; border-radius: 2px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+  background: var(--wheat-light); border: 1px solid rgba(138,97,22,.50); box-shadow: 0 1px 0 rgba(13,12,11,.06);
+  display: flex; flex-direction: column; justify-content: center; transition: transform 150ms, box-shadow 150ms, border-color 150ms, background-color 150ms, opacity 150ms; }
+.pd-tile:hover { transform: translateY(-1px); border-color: var(--ink); }
+.pd-tile:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.pd-tile .t { font-family: var(--font-text); font-weight: 600; font-size: 15px; line-height: 18px; color: var(--ink); }
+.pd-tile .h { font-family: var(--font-ui); font-size: 12px; line-height: 15px; color: var(--muted); margin-top: 3px; }
+.pd-tile.on { background: transparent; border: 1px dashed var(--rule-soft); box-shadow: none; transform: none; }
+.pd-tile.on .t, .pd-tile.on .h { color: var(--disabled-ink); }
+.pd-tile.on { padding-right: 48px; }
+.pd-tile:not(.on) .tier, .pd-tile-on .tier { color: var(--bronze); }
+.pd-tile .badge { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: var(--forest); color: #fff; border-radius: 2px;
+  font-family: var(--font-ui); font-size: 11.5px; font-weight: 600; padding: 2px 6px; }
+.pd-tile.held { transform: translateY(-2px); border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy), 0 6px 16px rgba(20,35,59,.22); }
+.pd-tile.dragging, .pd-tile-on.dragging { opacity: .3; }
+.pd-tiles .pd-tile { animation: cardIn 300ms var(--ease-out) both; }
+.drag-ghost { position: fixed; z-index: 60; pointer-events: none; transform: rotate(-2deg); background: var(--wheat-light); border: 1px solid var(--ink); border-radius: 2px;
+  box-shadow: 0 14px 28px rgba(13,12,11,.25); font-family: var(--font-text); font-weight: 600; font-size: 14px; line-height: 17px; padding: 10px 12px; text-align: center; }
+
+/* tightening, step by step, when the podium and its tiles do not fit (fit() in the script) */
+.pd.t1 .pd-slot, .pd.t1 .pd-tile-on { --sh: 46px; }
+.pd.t1 .pd-slotwrap { padding-bottom: 5px; }
+.pd.t1 .pd-step span { font-size: 16px; margin-top: 4px; gap: 3px; }
+.pd.t1 .pd-msg { margin-top: 4px; height: 16px; line-height: 16px; }
+.pd.t1 .pd-tiles { gap: 6px; margin-top: 4px; }
+.pd.t2 .pd-tile { min-height: 40px; padding: 4px 10px; }
+.pd.t2 .pd-tile.on { padding-right: 46px; }
+.pd.t2 .pd-tile .t { font-size: 14px; line-height: 16px; }
+.pd.t2 .pd-tile .h { font-size: 11.5px; line-height: 14px; margin-top: 1px; }
+.pd.t2 .pd-slot, .pd.t2 .pd-tile-on { --sh: 42px; font-size: 12px; }
+.pd.t2 .pd-tile-on { font-size: 13.5px; line-height: 15px; }
+.pd.t3 .pd-tile .h { display: none; }
+@media (max-width: 700px) {
+  .pd.t1 .pd-slot, .pd.t1 .pd-tile-on { --sh: 40px; }
+  .pd.t1 .pd-step span { font-size: 14px; margin-top: 4px; }
+  .pd.t2 .pd-tile { min-height: 30px; padding: 3px 8px; }
+  .pd.t2 .pd-tile.on { padding-right: 40px; }
+  .pd.t2 .pd-tile .t { font-size: 12px; line-height: 13.5px; }
+  .pd.t2 .pd-slot, .pd.t2 .pd-tile-on { --sh: 38px; font-size: 11.5px; }
+  .pd.t2 .pd-tile-on { font-size: 12px; line-height: 13.5px; }
+}
+
+/* ---------- above 8: the pick in the fanned pile (tap 1, 2, 3; a gold disc marks each) ---------- */
+.pf { position: relative; flex: 1; min-height: 0; }
+.pf.enter { animation: cardIn 320ms var(--ease-out); }
+.fan-head { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: center; align-items: baseline; gap: 10px;
+  font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+.fan-head b { color: var(--ink); font-weight: 600; }
+.fan-card { position: absolute; width: 122px; height: 62px; padding: 7px 9px; border-radius: 2px; text-align: left; cursor: pointer;
+  background: var(--wheat-light); border: 1px solid rgba(138,97,22,.55); box-shadow: 0 6px 14px -8px rgba(13,12,11,.35);
+  font-family: var(--font-text); font-weight: 600; font-size: 13px; line-height: 16px; color: var(--ink);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms, border-color 160ms; }
+.fan-card:hover, .fan-card:focus-visible { box-shadow: 0 0 0 2px var(--navy), 0 12px 20px -10px rgba(13,12,11,.40); outline: none; z-index: 3; }
+.fan-card > .lbl { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.fan-card .tier { color: var(--bronze); font-size: 11px; letter-spacing: .06em; }
+.pf.tight .fan-card { font-size: 12px; line-height: 13.5px; padding: 4px 6px; }
+.pf.tight .fan-head { top: 0; }
+.fan-card.ranked { border-color: var(--ink); box-shadow: 0 3px 6px rgba(13,12,11,.14); z-index: 2; }
+.fan-card.ranked > .lbl { padding-right: 10px; }
+.fan-card.held { border-color: var(--navy); box-shadow: 0 0 0 2px var(--navy), 0 10px 18px -8px rgba(20,35,59,.35); z-index: 3; }
+.fan-card.target { border-color: var(--bronze); }
+.disc { position: absolute; right: -8px; top: -8px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--wheat); border: 1px solid var(--harvest); box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 2px 4px rgba(13,12,11,.18);
+  font-family: var(--font-display); font-variation-settings: 'opsz' 24; font-size: 14px; line-height: 1; color: var(--ink); pointer-events: none; }
+.disc.pop { animation: discIn 260ms cubic-bezier(.34,1.45,.64,1); }
+@keyframes discIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- the preview's own link (bar, left): see the other variant ---------- */
+.pv-variant { white-space: nowrap; }
+
+/* ================= phone ================= */
+@media (max-width: 700px) {
+  .c-obj.pd-obj { padding: 8px 20px 0; }
+  .pd { justify-content: center; }
+  .pd-slotwrap { padding: 0 3px 5px; }
+  .pd-slot, .pd-tile-on { --sh: 46px; font-size: 12px; line-height: 14px; padding: 3px 6px; }
+  .pd-tile-on { font-size: 12.5px; line-height: 14px; }
+  .pd-step span { font-size: 16px; margin-top: 7px; gap: 4px; }
+  .pd-step span i { width: 14px; }
+  .pd-msg { margin-top: 8px; font-size: 12.5px; height: 16px; line-height: 16px; }
+  .pd-tiles { grid-template-columns: 1fr 1fr; grid-auto-rows: auto; gap: 6px; margin-top: 4px; }
+  .pd-tile { min-height: 32px; padding: 4px 9px; }
+  .pd-tile .t { font-size: 12.5px; line-height: 14px; }
+  .pd-tile .h { display: none; }
+  .pd-tile.on { padding-right: 40px; }
+  .pd-tile .badge { font-size: 11px; line-height: 13px; padding: 1px 5px; right: 5px; }
+  .pd-tile .tier, .pd-tile-on .tier { font-size: 11px; letter-spacing: .06em; }
+  .fan-card { width: 104px; height: 48px; padding: 5px 7px; font-size: 12px; line-height: 14px; }
+  .fan-head { top: 2px; justify-content: flex-start; font-size: 13px; line-height: 17px; }
+  .fan-head b { font-size: 15px; }
+  .disc { width: 22px; height: 22px; font-size: 13px; right: -6px; top: -7px; }
+  .pv-bar.link .pv-left .c-link { font-size: 12px; }
+}
+/* short laptops (the preview's frame is 614 px at 1280x650) */
+@media (min-width: 701px) and (max-height: 760px) {
+  .c-obj.pd-obj { padding-top: 6px; }
+  .pd { padding-bottom: 0; }
+  .pd-slotwrap { padding-bottom: 5px; }
+  .pd-slot, .pd-tile-on { --sh: 44px; }
+  .pd-msg { height: 16px; line-height: 16px; }
+  .pd-tile-on { font-size: 14px; line-height: 16px; }
+  .pd-step span { font-size: 18px; margin-top: 8px; gap: 4px; }
+  .pd-msg { margin-top: 4px; }
+  .pd-tiles { gap: 6px; margin-top: 4px; }
+  .pd-tile { min-height: 46px; padding: 5px 12px; }
+  .pd-tile .t { font-size: 14.5px; line-height: 17px; }
+  .pd-tile .h { margin-top: 1px; }
+  .pd.t1 .pd-slot, .pd.t1 .pd-tile-on { --sh: 42px; }
+  .pd.t2 .pd-slot, .pd.t2 .pd-tile-on { --sh: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { .pd.enter, .pf.enter, .pd-tiles .pd-tile, .disc.pop { animation: none; } }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'podium') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const ui = CeresPreview.mount(step, { objClass: 'pd-obj' })
+  const P = window.CeresPreview
+  const esc = P.esc
+  const fill = CeresNav.fill
+  const D = step.data
+  const T = D.ui
+  const RANK = T.ranks
+  const SNAP = 24
+  const $ = (id) => document.getElementById(id)
+  const isPhone = () => window.matchMedia('(max-width: 700px)').matches
+  const isShort = () => window.matchMedia('(min-width: 701px) and (max-height: 760px)').matches
+  const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  /* Preview-only words (reviewer-facing, like the preview notes; never respondent copy). */
+  const PV = {
+    toFan: 'Show 9+ cards', toPodium: 'Show up to 8',
+    small: 'Your Critical pile has {n} {cards}, so this would not show in the survey. Sample cards stand in.',
+    fanForced: 'Above 8 Critical cards the pick runs in the fanned pile: tap 1, 2, 3. Sample cards stand in.',
+    podiumForced: 'Up to 8 Critical cards show as tiles on a podium. Sample cards stand in.',
+    fanOwn: 'Your Critical pile has {n} cards, so the pick runs in the fanned pile.',
+  }
+  /* Screen-reader lines the QA'd mockup carries that script.js does not (see the return note). */
+  const SR = { placed: '{card}, {rank}.', removed: '{card} removed from the podium.' }
+
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+  function shuffled(ids, seed) {
+    const a = ids.slice(), r = mulberry32(seed)
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] }
+    return a
+  }
+  function hashSeed(s) { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h }
+
+  /* ---------------- where the options come from ---------------- */
+  let BY = {}, OWN = { podium: null, fan: null }, mode = 'podium', fanHead = ''
+  if (D.optionsFrom) {
+    // 2.2a, 2.5a, 6.3a, 7.2a: the parent's Critical cards, in pile order (the order they were placed)
+    const parent = CeresNav.step(D.optionsFrom.step)
+    const pileId = D.optionsFrom.pile
+    parent.data.cards.forEach((c) => { BY[c.id] = c })
+    const pileLabel = (parent.data.piles.find((p) => p.id === pileId) || {}).label || ''
+    const inPile = (rec, pid) => Object.keys(rec || {}).filter((id) => rec[id] === pid && BY[id])
+    const own = CeresNav.answers.get(parent.id)
+    const ownList = own && typeof own === 'object' && !Array.isArray(own) ? inPile(own, pileId) : null
+    const sample = parent.data.sample || {}
+    const sampleList = inPile(sample, pileId)
+    // a sample Critical pile above 8, so the fanned version can be shown: Critical first, then Core, then Nice to have
+    const sampleBig = sampleList.concat(inPile(sample, 'core'), inPile(sample, 'nice'))
+    const max = D.maxPodium || 8
+    const variants = {}
+    if (ownList && ownList.length > max) {
+      variants.fan = { list: ownList, note: fill(PV.fanOwn, { n: ownList.length }) }
+      variants.podium = { list: sampleList, note: PV.podiumForced }
+      mode = 'fan'
+    } else if (ownList && ownList.length > 3) {
+      variants.podium = { list: ownList, note: '' }
+      variants.fan = { list: sampleBig, note: PV.fanForced }
+    } else {
+      const why = ownList ? fill(PV.small, { n: ownList.length, cards: ownList.length === 1 ? 'card' : 'cards' }) : CERES_SCRIPT.sampleNote
+      variants.podium = { list: sampleList, note: why }
+      variants.fan = { list: sampleBig, note: PV.fanForced }
+    }
+    OWN = variants
+    fanHead = pileLabel
+    if (D.aboveMax === 'fan') {
+      const link = document.createElement('button'); link.type = 'button'; link.className = 'c-link pv-variant'
+      ui.left.appendChild(link); ui.bar.classList.add('link')
+      link.addEventListener('click', () => { mode = mode === 'fan' ? 'podium' : 'fan'; S.held = null; render(true) })
+      OWN.link = link
+    }
+  } else {
+    // 3.2: its own options, shuffled with a fixed seed
+    D.options.forEach((o) => { BY[o.id] = o })
+    const ids = D.options.map((o) => o.id)
+    OWN = { podium: { list: D.shuffle ? shuffled(ids, D.seed || hashSeed(step.id)) : ids, note: '' } }
+  }
+
+  /* ---------------- state ---------------- */
+  const S = { top: [null, null, null], held: null }
+  const saved = ui.load()
+  if (Array.isArray(saved)) S.top = [0, 1, 2].map((k) => (saved[k] && BY[saved[k]] ? saved[k] : null))
+  const opts = () => OWN[mode].list
+  function cleanTop() { const o = opts(); S.top = S.top.map((id) => (id && o.includes(id) ? id : null)) }
+
+  const labelHTML = (lbl) => esc(lbl).replace(/\(([A-Z]{3,})\)/, '<span class="tier">($1)</span>')
+  const say = (t) => { $('live').textContent = t }
+  function drawNext() {
+    const k = S.top.filter(Boolean).length
+    if (k >= 3) ui.status(true)
+    else ui.status(false, k === 0 ? T.missing[0] : fill(T.missing[1], { n: 3 - k }))
+  }
+  function changed() { ui.save(S.top.slice()); drawNext() }
+
+  /* ---------------- render the variant ---------------- */
+  function render(animate) {
+    cleanTop()
+    if (OWN.link) OWN.link.textContent = mode === 'fan' ? PV.toPodium : PV.toFan
+    ui.previewNote(OWN[mode].note)
+    if (mode === 'fan') {
+      ui.obj.innerHTML = `<div class="pf${animate && !reduced() ? ' enter' : ''}" id="pf"><div class="fan-head"><span><b>${esc(fanHead)} (${opts().length})</b></span></div></div><p class="sr" id="live" aria-live="polite"></p>`
+      drawFan(animate)
+    } else {
+      ui.obj.innerHTML = `
+        <div class="pd${animate && !reduced() ? ' enter' : ''}" id="pd">
+          <div class="pd-stand" id="stand"></div>
+          <div class="pd-base"></div>
+          <p class="pd-msg" id="pdMsg" aria-live="polite">${esc(T.full)}</p>
+          <div class="pd-tiles" id="tiles"></div>
+        </div>
+        <p class="sr" id="live" aria-live="polite"></p>`
+      drawPodium(animate)
+    }
+    drawNext()
+  }
+
+  /* ---------------- the podium (from mockups/piles.html) ---------------- */
+  function drawPodium(stagger) {
+    const stand = $('stand'), tiles = $('tiles')
+    // keyboard users keep their place: the tile that had focus gets it back after the redraw
+    const ae = document.activeElement
+    const refocusId = ae && ae.dataset && ae.dataset.id && (tiles.contains(ae) || stand.contains(ae)) ? ae.dataset.id : null
+    const order = [1, 0, 2], H = stepHeights()
+    const nextFree = S.top.indexOf(null)
+    stand.innerHTML = ''
+    order.forEach((k) => {
+      const id = S.top[k]
+      const col = document.createElement('div'); col.className = 'pd-col'; col.dataset.step = k
+      const wrap = document.createElement('div'); wrap.className = 'pd-slotwrap'
+      if (id) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'pd-tile-on' + (S.held && S.held !== id ? ' target' : ''); b.dataset.id = id; b.dataset.from = k
+        b.innerHTML = `<span>${labelHTML(BY[id].label)}</span>`
+        b.setAttribute('aria-label', S.held ? `${BY[id].label}, ${RANK[k]}. ${T.ariaReplace}` : fill(T.ariaPlaced, { card: BY[id].label, rank: RANK[k] }))
+        dragify(b, id, k)
+        wrap.appendChild(b)
+      } else {
+        const s = document.createElement('div'); s.className = 'pd-slot' + (k === nextFree ? ' next' : ''); s.textContent = fill(T.slot, { rank: RANK[k] })
+        if (S.held) s.classList.add('next')
+        s.addEventListener('click', () => { if (S.held) { const from = document.querySelector(`#tiles [data-id="${S.held}"]`); putAt(S.held, k, from && from.getBoundingClientRect()) } })
+        wrap.appendChild(s)
+      }
+      const st = document.createElement('div'); st.className = 'pd-step'; st.style.height = H[k] + 'px'
+      st.innerHTML = `<span>${esc(RANK[k])}${k === 0 ? '<i></i>' : ''}</span>`
+      col.appendChild(wrap); col.appendChild(st); stand.appendChild(col)
+    })
+    tiles.innerHTML = ''
+    const hints = !D.optionsFrom ? !!D.hints : true
+    opts().forEach((id, i) => {
+      const at = S.top.indexOf(id)
+      const o = BY[id]
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.id = id
+      b.className = 'pd-tile' + (at >= 0 ? ' on' : '') + (S.held === id ? ' held' : '')
+      b.innerHTML = `<span class="t">${labelHTML(o.label)}</span>${hints && o.hint ? `<span class="h">${esc(o.hint)}</span>` : ''}${at >= 0 ? `<span class="badge">${esc(RANK[at])}</span>` : ''}`
+      b.setAttribute('aria-pressed', at >= 0 ? 'true' : 'false')
+      b.setAttribute('aria-label', at >= 0 ? fill(T.ariaPlaced, { card: o.label, rank: RANK[at] }) : o.label + (hints && o.hint ? '. ' + o.hint : ''))
+      b.style.animationDelay = stagger ? (i * 40) + 'ms' : '0ms'
+      if (!stagger) b.style.animation = 'none'
+      dragify(b, id, -1)
+      tiles.appendChild(b)
+    })
+    $('pdMsg').classList.toggle('on', !!S.held)
+    fit()
+    if (refocusId) { const b = tiles.querySelector(`[data-id="${refocusId}"]`); if (b) b.focus({ preventScroll: true }) }
+  }
+  /* the podium's step heights; a tighter podium (level 1 and up) has lower steps */
+  let level = 0
+  function stepHeights() {
+    const H = isPhone() ? [50, 38, 31] : isShort() ? [44, 34, 27] : [64, 50, 39]
+    return level >= 1 ? H.map((h) => Math.max(isPhone() ? 22 : 25, Math.round(h * 0.72))) : H
+  }
+  /* tighten one level at a time until the podium, the line and the tiles fit the object (3.2's ten tiles, eight
+     Critical cards with hints, a long preview note) */
+  function fit() {
+    const pd = $('pd'); if (!pd) return
+    const over = () => {
+      const kids = [...pd.children]
+      const span = kids[kids.length - 1].getBoundingClientRect().bottom - kids[0].getBoundingClientRect().top
+      return span > pd.clientHeight
+    }
+    const apply = (l) => {
+      level = l
+      ;['t1', 't2', 't3'].forEach((c, i) => pd.classList.toggle(c, i < l))
+      const H = stepHeights()
+      pd.querySelectorAll('.pd-col').forEach((col) => { col.querySelector('.pd-step').style.height = H[+col.dataset.step] + 'px' })
+    }
+    apply(0)
+    for (let l = 1; l <= 3 && over(); l++) apply(l)
+  }
+  function flyTo(id, fromRect) {
+    if (!fromRect || reduced()) return
+    const el = document.querySelector(`#stand .pd-tile-on[data-id="${id}"]`); if (!el) return
+    const to = el.getBoundingClientRect()
+    const dx = fromRect.left + fromRect.width / 2 - (to.left + to.width / 2), dy = fromRect.top + fromRect.height / 2 - (to.top + to.height / 2)
+    const a = el.animate([
+      { transform: `translate(${dx}px, ${dy}px)`, boxShadow: '0 2px 4px rgba(13,12,11,.10)' },
+      { transform: `translate(${dx * 0.35}px, ${dy * 0.5 - 30}px) scale(1.05)`, boxShadow: '0 18px 28px rgba(13,12,11,.18)', offset: 0.55 },
+      { transform: 'translate(0,-5px) scale(1.02)', offset: 0.82 },
+      { transform: 'none', boxShadow: '0 3px 6px rgba(13,12,11,.12)' }], { duration: 480, easing: 'cubic-bezier(.3,.7,.2,1)' })
+    const k = S.top.indexOf(id)
+    a.onfinish = () => { const st = document.querySelector(`#stand .pd-col[data-step="${k}"] .pd-step`); if (st) { st.classList.remove('bump'); void st.offsetWidth; st.classList.add('bump') } }
+  }
+  function redraw() { if (mode === 'fan') drawFan(false); else drawPodium(false) }
+  function putAt(id, k, fromRect) {
+    const was = S.top.indexOf(id)
+    if (was === k) return
+    const out = S.top[k]
+    if (was >= 0) S.top[was] = out || null
+    S.top[k] = id
+    S.held = null
+    redraw(); changed()
+    if (mode === 'podium') flyTo(id, fromRect)
+    say(fill(SR.placed, { card: BY[id].label, rank: RANK[k] }))
+  }
+  function takeBack(id) {
+    const k = S.top.indexOf(id); if (k < 0) return
+    S.top[k] = null; S.held = null
+    redraw(); changed()
+    say(fill(SR.removed, { card: BY[id].label }))
+  }
+  function tapTile(id, el) {
+    if (S.top.includes(id)) { takeBack(id); return }
+    if (S.held === id) { S.held = null; redraw(); return }
+    const free = S.top.indexOf(null)
+    if (free < 0) { S.held = id; redraw(); return }
+    putAt(id, free, el.getBoundingClientRect())
+  }
+  function tapStepTile(k) {
+    const id = S.top[k]
+    if (S.held && S.held !== id) { const from = document.querySelector(`#tiles [data-id="${S.held}"]`); putAt(S.held, k, from && from.getBoundingClientRect()); return }
+    if (id) takeBack(id)
+  }
+  /* drag a tile onto a step (24 px snap), or a placed tile back to the list */
+  let PD = null
+  function zoneAt(x, y) {
+    for (const col of document.querySelectorAll('#stand .pd-col')) {
+      const r = col.getBoundingClientRect()
+      if (x > r.left - SNAP && x < r.right + SNAP && y > r.top - SNAP && y < r.bottom + SNAP) return +col.dataset.step
+    }
+    const t = $('tiles').getBoundingClientRect()
+    if (x > t.left && x < t.right && y > t.top - 10 && y < t.bottom + 10) return 'list'
+    return null
+  }
+  function dragify(el, id, from) {
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== undefined && e.button !== 0) return
+      el.setPointerCapture(e.pointerId)
+      PD = { id, from, el, sx: e.clientX, sy: e.clientY, moved: false, ghost: null, over: null }
+    })
+    el.addEventListener('pointermove', (e) => {
+      if (!PD || PD.el !== el) return
+      if (!PD.moved && Math.hypot(e.clientX - PD.sx, e.clientY - PD.sy) < 6) return
+      if (!PD.moved) {
+        PD.moved = true; el.classList.add('dragging')
+        const g = document.createElement('div'); g.className = 'drag-ghost'; g.textContent = BY[id].label
+        g.style.width = Math.min(el.offsetWidth, 200) + 'px'; document.body.appendChild(g); PD.ghost = g
+      }
+      PD.ghost.style.left = (e.clientX - PD.ghost.offsetWidth / 2) + 'px'; PD.ghost.style.top = (e.clientY - 24) + 'px'
+      const z = zoneAt(e.clientX, e.clientY)
+      PD.over = typeof z === 'number' ? z : null
+      document.querySelectorAll('#stand .pd-col').forEach((c) => { const s = c.querySelector('.pd-slot'); if (s) s.classList.toggle('over', +c.dataset.step === PD.over) })
+    })
+    const end = (e, cancel) => {
+      if (!PD || PD.el !== el) return
+      const d = PD; PD = null
+      el.classList.remove('dragging'); if (d.ghost) d.ghost.remove()
+      if (!d.moved) { if (cancel) return; if (d.from >= 0) tapStepTile(d.from); else tapTile(id, el); return }
+      if (cancel) { drawPodium(false); return }
+      const z = zoneAt(e.clientX, e.clientY)
+      if (typeof z === 'number') putAt(id, z, null)
+      else if (z === 'list' && d.from >= 0) takeBack(id)
+      else drawPodium(false)
+    }
+    el.addEventListener('pointerup', (e) => end(e, false))
+    el.addEventListener('pointercancel', (e) => end(e, true))
+    // keyboard: Enter / Space arrive as a click with no pointer
+    el.addEventListener('click', (e) => { if (e.detail === 0) { if (from >= 0) tapStepTile(from); else tapTile(id, el) } })
+  }
+
+  /* ---------------- above 8: the fanned pile, tap 1, 2, 3 (design §4, the top-3 rule) ---------------- */
+  function drawFan(animate) {
+    const pf = $('pf')
+    pf.querySelectorAll('.fan-card').forEach((b) => b.remove())
+    const list = opts()
+    const phone = isPhone()
+    const per = phone ? 3 : 5
+    const gapX = phone ? 10 : 16
+    let topPad = phone ? 30 : 32
+    const cw = Math.floor(Math.min(phone ? 112 : 124, (pf.clientWidth - (per - 1) * gapX - 8) / per))
+    const held = S.held
+    const cards = list.map((id) => {
+      const at = S.top.indexOf(id)
+      const b = document.createElement('button')
+      b.type = 'button'; b.dataset.id = id
+      b.className = 'fan-card' + (at >= 0 ? ' ranked' : '') + (held === id ? ' held' : '') + (held && at >= 0 ? ' target' : '')
+      b.innerHTML = `<span class="lbl">${labelHTML(BY[id].label)}</span>${at >= 0 ? `<span class="disc" aria-hidden="true">${at + 1}</span>` : ''}`
+      b.setAttribute('aria-pressed', at >= 0 ? 'true' : 'false')
+      b.setAttribute('aria-label', at >= 0 ? (held ? `${BY[id].label}, ${RANK[at]}. ${T.ariaReplace}` : fill(T.ariaPlaced, { card: BY[id].label, rank: RANK[at] })) : BY[id].label)
+      b.addEventListener('click', () => tapFan(id))
+      pf.appendChild(b)
+      return b
+    })
+    // each card as tall as its label needs; tighten the type, then the gaps, until the fan fits
+    let gapY = phone ? 12 : 14
+    const measure = () => {
+      const minH = pf.classList.contains('tight') ? (phone ? 42 : 50) : (phone ? 48 : 62)
+      cards.forEach((b) => { b.style.width = cw + 'px'; b.style.height = 'auto'; b.style.minHeight = minH + 'px' })
+      const rowH = []
+      cards.forEach((b, i) => { const r = Math.floor(i / per); rowH[r] = Math.max(rowH[r] || 0, b.offsetHeight) })
+      return rowH
+    }
+    pf.classList.remove('tight')
+    let rowH = measure()
+    const need = () => topPad + rowH.reduce((x, y) => x + y, 0) + (rowH.length - 1) * gapY + 8
+    if (need() > pf.clientHeight) { pf.classList.add('tight'); rowH = measure(); topPad -= 6 }
+    while (need() > pf.clientHeight && gapY > 5) gapY--
+    const W = pf.clientWidth, H = pf.clientHeight
+    const blockH = need() - topPad - 8
+    const y0 = topPad + Math.max(0, (H - topPad - blockH) / 2 - (phone ? 0 : 6))
+    cards.forEach((b, i) => {
+      const row = Math.floor(i / per), inRow = Math.min(per, list.length - row * per), k = i - row * per
+      const mid = (inRow - 1) / 2
+      const x = (W - (inRow * cw + (inRow - 1) * gapX)) / 2 + k * (cw + gapX)
+      const y = y0 + rowH.slice(0, row).reduce((a, h) => a + h + gapY, 0) + Math.pow(k - mid, 2) * (phone ? 1.5 : 2.5)
+      const rot = (k - mid) * (phone ? 2.2 : 3)
+      b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.height = rowH[row] + 'px'; b.style.transform = `rotate(${rot}deg)`
+      if (animate && !reduced()) {
+        b.animate([{ transform: `translate(0, 40px) rotate(0deg) scale(.6)`, opacity: 0 }, { transform: `rotate(${rot}deg)`, opacity: 1 }],
+          { duration: 300, delay: i * 22, easing: 'cubic-bezier(.3,.7,.2,1)', fill: 'backwards' })
+      }
+    })
+  }
+  function tapFan(id) {
+    const at = S.top.indexOf(id)
+    if (S.held && S.held !== id && at >= 0) { const h = S.held; putAt(h, at); popDisc(h); return }
+    if (at >= 0) { takeBack(id); focusCard(id); return }
+    if (S.held === id) { S.held = null; drawFan(false); focusCard(id); return }
+    const free = S.top.indexOf(null)
+    if (free < 0) { S.held = id; drawFan(false); focusCard(id); return }
+    putAt(id, free); popDisc(id)
+  }
+  function focusCard(id) { const b = document.querySelector(`#pf .fan-card[data-id="${id}"]`); if (b) b.focus({ preventScroll: true }) }
+  function popDisc(id) {
+    focusCard(id)
+    const d = document.querySelector(`#pf .fan-card[data-id="${id}"] .disc`)
+    if (d && !reduced()) { d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop') }
+  }
+
+  /* ---------------- boot ---------------- */
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.held) { S.held = null; redraw() } })
+  render(true)
+  // a restored pick no longer on offer (its card since moved out of Critical on the parent) leaves the stored answer
+  // too, once, on load (as 2.3 does); the preview's podium/fan switch never saves, so it cannot wipe real picks
+  if (Array.isArray(saved) && JSON.stringify(S.top) !== JSON.stringify(saved)) ui.save(S.top.slice())
+  let lastPhone = isPhone(), lastShort = isShort()
+  window.addEventListener('resize', () => {
+    const p = isPhone(), s = isShort()
+    if (mode === 'fan') drawFan(false)
+    else drawPodium(false)
+    lastPhone = p; lastShort = s
+  })
+  // test hook (not used by the page)
+  window.__podium = { state: () => S, mode: () => mode, options: () => opts().slice() }
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+  /* t-trays: the trays side by side, a count on each; tap a tile then a tray, or drag (2.6: four trays, 5.3: three).
+     On a phone four trays sit two by two. No mockup: the
+     behaviour is The Ascent's trays renderer (src/v2/ui/templates/Trays.tsx), drawn in the Ceres paper and ink of
+     mockups/piles.html (marble trays, wheat-light cards, navy for the held card). The shared frame stays untouched. */
+  :root { --ease-out: cubic-bezier(.3,.7,.2,1); }
+  .c-obj.ty-obj { padding-top: 16px; padding-bottom: 2px; }
+  .ty { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- the trays ---------- */
+  .ty-trays { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(var(--trays, 3), minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr); column-gap: 12px; row-gap: 0; }
+  .ty-trays.four { column-gap: 10px; }
+  /* the three names share one row (subgrid), so a name that wraps never pushes one tray lower than the others */
+  .ty-tray { position: relative; min-width: 0; min-height: 0; grid-row: span 2; display: grid; grid-template-rows: subgrid; cursor: default; outline: none; border-radius: 2px;
+    -webkit-user-select: none; user-select: none; }
+  .ty-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 0 2px 7px; }
+  .ty-name { font-family: var(--font-ui); font-weight: 600; font-size: 13.5px; line-height: 17px; color: var(--ink); text-wrap: balance; }
+  .ty-n { flex: none; font-family: var(--font-text); font-weight: 600; font-size: 19px; line-height: 17px; color: var(--rule); font-variant-numeric: lining-nums tabular-nums; min-width: 14px; text-align: right; transition: color 200ms; }
+  .ty-tray.has .ty-n { color: var(--bronze); }
+  .ty-n.bump { animation: ty-bump 260ms var(--ease-out); }
+  @keyframes ty-bump { 0% { transform: translateY(-4px); opacity: .4 } 100% { transform: none; opacity: 1 } }
+
+  .ty-bed { position: relative; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 5px; padding: 8px;
+    background: var(--marble); border: 1px solid var(--rule-soft); border-radius: 2px; box-shadow: inset 0 2px 3px rgba(13,12,11,.05);
+    transition: border-color 150ms, background-color 150ms, box-shadow 150ms, transform 150ms; }
+  .ty-bed::after { content: ""; position: absolute; inset: 5px; border: 1px dashed var(--rule-soft); border-radius: 2px; pointer-events: none; transition: opacity 150ms, border-color 150ms; }
+  .ty-tray.has .ty-bed::after { opacity: 0; }
+  /* holding a card: every tray it can go to shows it can take it */
+  .ty.holding .ty-tray.can { cursor: pointer; }
+  .ty.holding .ty-tray.can .ty-bed { border-color: var(--harvest); background: #F4EEE2; }
+  .ty.holding .ty-tray.can:not(.has) .ty-bed::after { opacity: 1; border-color: rgba(138,97,22,.45); }
+  @media (hover: hover) { .ty.holding .ty-tray.can:hover .ty-bed { border-color: var(--navy); background: #FFFFFF; box-shadow: 0 0 0 1px var(--navy); } }
+  .ty-tray.over .ty-bed { border-color: var(--navy) !important; background: #FFFFFF !important; box-shadow: 0 0 0 1px var(--navy), 0 8px 18px -10px rgba(20,35,59,.45) !important; transform: translateY(-2px); }
+  .ty-tray:focus-visible .ty-bed { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--navy); }
+  .ty-tray.thunk .ty-bed { animation: ty-thunk 220ms ease-out; }
+  @keyframes ty-thunk { 0%,100% { transform: translateY(0) } 45% { transform: translateY(3px) } }
+
+  /* ---------- the cards (one look in the list and in a tray; smaller in a tray) ---------- */
+  .ty-tile { position: relative; box-sizing: border-box; display: flex; align-items: center; min-width: 0; border-radius: 2px; cursor: grab; outline: none;
+    background: var(--wheat-light); border: 1px solid rgba(138,97,22,.50); box-shadow: 0 1px 0 rgba(13,12,11,.06);
+    font-family: var(--font-text); font-weight: 600; color: var(--ink); letter-spacing: -.003em;
+    touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    transition: transform 150ms, box-shadow 150ms, border-color 150ms, background-color 150ms, opacity 150ms; }
+  .ty-tile .t { display: block; min-width: 0; }
+  .ty-pool .ty-tile { min-height: 46px; padding: 6px 12px; font-size: 15px; line-height: 18px; }
+  .ty-bed .ty-tile { flex: none; min-height: 30px; padding: 4px 9px; font-size: 13.5px; line-height: 16px; border-bottom-color: rgba(122,62,18,.85); }
+  @media (hover: hover) { .ty-tile:hover { border-color: var(--ink); } .ty-pool .ty-tile:hover { transform: translateY(-1px); } }
+  .ty-tile:focus-visible { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--navy); }
+  .ty-tile.held { transform: translateY(-2px); background: #EDD9AB; border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy), 0 6px 16px rgba(20,35,59,.22); z-index: 2; }
+  .ty-tile.lifting { opacity: .3; }
+  .ty-tile.land { animation: ty-land 200ms var(--ease-out); }
+  @keyframes ty-land { from { transform: translateY(-7px) } to { transform: none } }
+
+  /* ---------- the cards still to place ---------- */
+  .ty-pool { flex: none; display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); grid-auto-rows: auto; gap: 8px; align-content: start; }
+  .ty-pool:empty { display: none; }
+
+  /* the card under the finger while dragging */
+  .ty-ghost { position: fixed; z-index: 60; pointer-events: none; transform: rotate(-2deg); background: var(--wheat-light); border: 1px solid var(--ink); border-radius: 2px;
+    box-shadow: 0 14px 28px rgba(13,12,11,.25); font-family: var(--font-text); font-weight: 600; font-size: 14px; line-height: 17px; padding: 10px 12px; color: var(--ink); }
+
+  /* a crowded tray tightens its cards (and then the list) so nothing is ever hidden */
+  .ty.d1 .ty-bed { gap: 3px; padding: 6px; }
+  .ty.d1 .ty-bed .ty-tile { min-height: 25px; padding: 2px 8px; font-size: 12.5px; line-height: 15px; }
+  .ty.d2 .ty-pool .ty-tile { min-height: 38px; padding: 4px 10px; font-size: 14px; line-height: 17px; }
+  .ty.d2 { gap: 10px; }
+  .ty.d2 .ty-bed .ty-tile { min-height: 22px; padding: 1px 7px; line-height: 14px; }
+  .ty.d3 .ty-bed { overflow-y: auto; }
+
+  /* 1280x650 */
+  @media (min-width: 701px) and (max-height: 720px) {
+    .c-obj.ty-obj { padding-top: 12px; }
+    .ty { gap: 10px; }
+    .ty-pool .ty-tile { min-height: 42px; padding: 5px 11px; }
+  }
+
+  /* ---------- phone: trays side by side, the cards in a two-column chip grid under them ---------- */
+  @media (max-width: 700px) {
+    .c-obj.ty-obj { padding-top: 10px; }
+    .ty { gap: 10px; }
+    .ty-trays { gap: 6px; }
+    /* four trays: two by two, each pair of names on one row */
+    .ty-trays.four { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 8px; row-gap: 8px; }
+    .ty-trays.four .ty-tray { row-gap: 0; }
+    .ty-head { gap: 4px; padding: 0 1px 5px; }
+    .ty-name { font-size: 12px; line-height: 14px; text-wrap: pretty; }
+    .ty-n { font-size: 16px; line-height: 14px; min-width: 9px; }
+    .ty-bed { padding: 4px; gap: 3px; }
+    .ty-bed::after { inset: 3px; }
+    .ty-bed .ty-tile { min-height: 26px; padding: 3px 5px; font-size: 11.5px; line-height: 13px; letter-spacing: -.01em; }
+    .ty-pool { --cols: 2 !important; gap: 6px; }
+    .ty-pool .ty-tile { min-height: 36px; padding: 4px 9px; font-size: 13px; line-height: 15px; }
+    .ty.d1 .ty-bed .ty-tile { min-height: 22px; padding: 2px 4px; font-size: 11px; line-height: 12.5px; }
+    .ty.d2 .ty-pool .ty-tile { min-height: 32px; padding: 3px 8px; font-size: 12.5px; line-height: 14px; }
+    .ty.d2 .ty-bed { gap: 2px; padding: 3px; }
+    .ty.d2 .ty-bed .ty-tile { min-height: 20px; padding: 1px 4px; line-height: 11.5px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .ty-tile.land, .ty-n.bump, .ty-tray.thunk .ty-bed { animation: none; } }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'trays') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const D = step.data
+  const S = window.CERES_SCRIPT
+
+  /* ---------- which tiles: 2.6 keeps only what 2.2 did not put in Not for HNW (plus `always` tiles) ---------- */
+  let tiles = D.tiles.slice()
+  let fromSample = false
+  if (D.tilesFrom) {
+    const got = CeresNav.value(D.tilesFrom.step)
+    const piles = got.value && typeof got.value === 'object' && !Array.isArray(got.value) ? got.value : {}
+    fromSample = !!got.sample
+    tiles = D.tiles.filter((t) => t.always || piles[t.id] !== D.tilesFrom.excludePile)
+  }
+  // the per-person shuffle (seeded; logged as <store>.order in the real build)
+  const RESPONDENT = 'K7Q2-MX'
+  function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) } return h >>> 0 }
+  function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+  if (D.shuffle) {
+    const r = rng(D.seed != null ? D.seed : hash(RESPONDENT + ':' + D.store))
+    for (let i = tiles.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [tiles[i], tiles[j]] = [tiles[j], tiles[i]] }
+  }
+
+  const ui = CeresPreview.mount(step, { vars: { n: tiles.length }, objClass: 'ty-obj' })
+  if (fromSample) ui.previewNote(S.sampleNote)
+  const esc = ui.esc
+  const trays = D.trays
+  const N = tiles.length
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const isPhone = () => window.matchMedia('(max-width: 700px)').matches
+  const SNAP = 24
+
+  /* ---------- draw ---------- */
+  ui.obj.innerHTML = `<div class="ty" id="ty">
+    <div class="ty-trays${trays.length === 4 ? ' four' : ''}" id="trays" style="--trays:${trays.length}">${trays.map((t, i) => `
+      <div class="ty-tray" data-tray="${esc(t.id)}" role="button" tabindex="0">
+        <div class="ty-head"><span class="ty-name">${esc(t.label)}</span><span class="ty-n" aria-hidden="true">0</span></div>
+        <div class="ty-bed"></div>
+      </div>`).join('')}
+    </div>
+    <div class="ty-pool" id="pool" style="--cols:${N <= 6 ? 3 : 4}"></div>
+  </div>`
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const ty = $('#ty'), pool = $('#pool'), trayGrid = $('#trays')
+  const trayEl = {}
+  $$('.ty-tray', ty).forEach((el) => { trayEl[el.dataset.tray] = el })
+
+  const els = {}
+  tiles.forEach((t) => {
+    const e = document.createElement('div')
+    e.className = 'ty-tile'; e.tabIndex = 0; e.setAttribute('role', 'button'); e.dataset.id = t.id
+    e.innerHTML = `<span class="t">${esc(t.label)}</span>`
+    els[t.id] = e
+    wire(e, t.id)
+  })
+
+  /* ---------- state: tile -> tray, and the order cards landed in each tray ---------- */
+  let placed = {}, seq = [], sel = null, drag = null
+  const saved = ui.load()
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+    tiles.forEach((t) => { if (trays.some((x) => x.id === saved[t.id])) { placed[t.id] = saved[t.id]; seq.push(t.id) } })
+  }
+  const labelOf = (id) => (tiles.find((t) => t.id === id) || {}).label
+  const trayOf = (id) => trays.find((t) => t.id === id)
+
+  function render(o) {
+    o = o || {}
+    // FLIP: every card glides from where it was to where it lands
+    const before = {}
+    if (!o.instant && !reduce) tiles.forEach((t) => { const e = els[t.id]; if (e.isConnected) before[t.id] = e.getBoundingClientRect() })
+    // the list keeps its first order, so a card taken back returns to where it started
+    arrange(pool, tiles.filter((t) => !placed[t.id]).map((t) => els[t.id]))
+    trays.forEach((tr) => {
+      const bed = $('.ty-bed', trayEl[tr.id])
+      arrange(bed, seq.filter((id) => placed[id] === tr.id).map((id) => els[id]))
+      const n = seq.filter((id) => placed[id] === tr.id).length
+      const ne = $('.ty-n', trayEl[tr.id])
+      if (ne.textContent !== String(n)) { ne.textContent = String(n); if (!o.instant) { ne.classList.remove('bump'); void ne.offsetWidth; ne.classList.add('bump') } }
+      trayEl[tr.id].classList.toggle('has', n > 0)
+      trayEl[tr.id].setAttribute('aria-label', `${tr.label}, ${n}${sel ? '. Put ' + labelOf(sel) + ' here.' : ''}`)
+    })
+    tiles.forEach((t) => {
+      const e = els[t.id], at = placed[t.id]
+      e.classList.toggle('held', sel === t.id)
+      e.setAttribute('aria-pressed', String(sel === t.id))
+      e.setAttribute('aria-label', at ? `${t.label}. In ${trayOf(at).label}. Tap to take it out.` : `${t.label}. Tap, then tap a tray. Keys 1 to ${trays.length} put it straight in a tray.`)
+    })
+    // a phone with four trays (two by two): each row of trays takes the height in proportion to what it holds, so a
+    // full tray has room and an empty one stays a clear target
+    if (trays.length === 4 && isPhone()) {
+      const n = (i) => seq.filter((id) => placed[id] === trays[i].id).length
+      const w0 = Math.max(n(0), n(1)) + 1, w1 = Math.max(n(2), n(3)) + 1
+      trayGrid.style.gridTemplateRows = `auto minmax(0, ${w0}fr) auto minmax(0, ${w1}fr)`
+    } else trayGrid.style.gridTemplateRows = ''
+    ty.classList.toggle('holding', !!sel || !!(drag && drag.moved))
+    const holder = drag && drag.moved ? drag.id : sel
+    trays.forEach((tr) => trayEl[tr.id].classList.toggle('can', !!holder && placed[holder] !== tr.id))
+    fit()
+    if (!o.instant && !reduce) tiles.forEach((t) => {
+      const e = els[t.id], was = before[t.id]; if (!was) return
+      const now = e.getBoundingClientRect()
+      const dx = was.left - now.left, dy = was.top - now.top
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
+      e.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.7,.2,1)' })
+    })
+    // the hint beside Next (Next itself always works)
+    const left = N - Object.keys(placed).length
+    if (left > 0) ui.status(false, CeresNav.fill(D.missing, { n: left }))
+    else ui.status(true)
+  }
+
+  /** Put these cards in this order, moving only the ones out of place (moving a node would drop its pointer capture and focus). */
+  function arrange(box, list) {
+    list.forEach((e, i) => { const at = box.children[i]; if (at !== e) box.insertBefore(e, at || null) })
+  }
+
+  /** A crowded tray tightens its cards, then the list, so nothing is ever hidden and the page never scrolls. */
+  function fit() {
+    ty.classList.remove('d1', 'd2', 'd3')
+    const over = () => $$('.ty-bed', ty).some((b) => b.scrollHeight > b.clientHeight + 1)
+    for (const d of ['d1', 'd2', 'd3']) { if (!over()) return; ty.classList.add(d) }
+  }
+
+  function save() {
+    const out = {}
+    seq.forEach((id) => { if (placed[id]) out[id] = placed[id] })
+    ui.save(Object.keys(out).length ? out : undefined)
+  }
+
+  /* ---------- actions (as The Ascent's trays) ---------- */
+  function place(id, trayId, via) {
+    if (placed[id] === trayId) { sel = null; render(); return }
+    placed[id] = trayId
+    seq = seq.filter((x) => x !== id); seq.push(id)
+    sel = null
+    render(); save()
+    const e = els[id]; e.classList.remove('land'); void e.offsetWidth; if (via !== 'drag') e.classList.add('land')
+    const tr = trayEl[trayId]; tr.classList.remove('thunk'); void tr.offsetWidth; tr.classList.add('thunk')
+  }
+  function takeOut(id) {
+    if (!placed[id]) return
+    delete placed[id]; seq = seq.filter((x) => x !== id)
+    render(); save()
+  }
+  /** After a keyboard placement, focus moves on to the next card still to place (or stays put when none is left). */
+  function focusNext(fromIndex) {
+    const rest = tiles.filter((t) => !placed[t.id])
+    if (!rest.length) return
+    const after = rest.find((t) => tiles.indexOf(t) > fromIndex) || rest[0]
+    els[after.id].focus()
+  }
+  function tapTile(id) {
+    if (sel && sel !== id && placed[id]) { place(sel, placed[id], 'tap'); return }   // a card in a tray is a target too
+    if (placed[id] && !sel) { takeOut(id); return }
+    sel = sel === id ? null : id
+    render()
+  }
+  function tapTray(trayId) { if (sel) place(sel, trayId, 'tap') }
+
+  /* ---------- pointer: tap or drag; a tray within 24 px counts ---------- */
+  let ghost = null
+  function hit(x, y) {
+    const el = document.elementFromPoint(x, y)
+    const tr = el && el.closest('.ty-tray')
+    if (tr) return tr.dataset.tray
+    for (const t of trays) {
+      const r = $('.ty-bed', trayEl[t.id]).getBoundingClientRect()
+      if (x > r.left - SNAP && x < r.right + SNAP && y > r.top - SNAP && y < r.bottom + SNAP) return t.id
+    }
+    if (el && el.closest('.ty-pool')) return 'pool'
+    return null
+  }
+  function wire(e, id) {
+    e.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== 0) return
+      try { e.setPointerCapture(ev.pointerId) } catch (err) { /* ignore */ }
+      const r = e.getBoundingClientRect()
+      drag = { id, sx: ev.clientX, sy: ev.clientY, w: r.width, moved: false, over: null }
+    })
+    e.addEventListener('pointermove', (ev) => {
+      if (!drag || drag.id !== id) return
+      if (!drag.moved) {
+        if (Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) < 6) return
+        drag.moved = true; sel = null
+        ghost = document.createElement('div'); ghost.className = 'ty-ghost'; ghost.textContent = labelOf(id)
+        ghost.style.width = Math.min(drag.w, 200) + 'px'
+        document.body.appendChild(ghost)
+        e.classList.add('lifting')
+        render({ instant: true })
+      }
+      ghost.style.left = (ev.clientX - Math.min(drag.w, 200) / 2) + 'px'
+      ghost.style.top = (ev.clientY - 26) + 'px'
+      const h = hit(ev.clientX, ev.clientY)
+      if (h !== drag.over) {
+        drag.over = h
+        trays.forEach((t) => trayEl[t.id].classList.toggle('over', h === t.id && placed[id] !== t.id))
+      }
+    })
+    const end = (ev, cancelled) => {
+      if (!drag || drag.id !== id) return
+      const d = drag; drag = null
+      if (ghost) { ghost.remove(); ghost = null }
+      e.classList.remove('lifting')
+      trays.forEach((t) => trayEl[t.id].classList.remove('over'))
+      if (!d.moved) { if (!cancelled) tapTile(id); return }
+      if (cancelled) { render(); return }
+      const h = hit(ev.clientX, ev.clientY)
+      if (h === 'pool') { sel = null; takeOut(id); return }
+      if (h && trayOf(h)) { place(id, h, 'drag'); return }
+      render()   // dropped nowhere: it goes home
+    }
+    e.addEventListener('pointerup', (ev) => end(ev, false))
+    e.addEventListener('pointercancel', (ev) => end(ev, true))
+    e.addEventListener('click', (ev) => ev.stopPropagation())
+    e.addEventListener('keydown', (ev) => {
+      if (ev.altKey || ev.ctrlKey || ev.metaKey) return       // Alt+arrows belong to the frame (Next / Back)
+      const k = ev.key
+      const idx = tiles.findIndex((t) => t.id === id)
+      if (k === 'Enter' || k === ' ') {
+        ev.preventDefault(); ev.stopPropagation()
+        const wasPlaced = !!placed[id]
+        tapTile(id)
+        if (wasPlaced && !placed[id]) els[id].focus()
+        return
+      }
+      const n = parseInt(k, 10)
+      if (n >= 1 && n <= trays.length) {
+        ev.preventDefault()
+        const fromPool = !placed[id]
+        place(id, trays[n - 1].id, 'key')
+        if (fromPool) focusNext(idx); else els[id].focus()
+        return
+      }
+      if (k === 'Escape' && sel) { sel = null; render() }
+      if ((k === 'Delete' || k === 'Backspace') && placed[id]) { ev.preventDefault(); takeOut(id); els[id].focus() }
+    })
+  }
+  trays.forEach((t) => {
+    const el = trayEl[t.id]
+    el.addEventListener('click', () => tapTray(t.id))
+    el.addEventListener('keydown', (ev) => {
+      if (ev.altKey || ev.ctrlKey || ev.metaKey) return
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault(); ev.stopPropagation()
+        if (!sel) return
+        const idx = tiles.findIndex((x) => x.id === sel)
+        const fromPool = !placed[sel]
+        tapTray(t.id)
+        if (fromPool) focusNext(idx)
+      }
+    })
+  })
+  // a tap anywhere else puts the held card down
+  document.addEventListener('click', (ev) => {
+    if (sel && !ev.target.closest('.ty-tile, .ty-tray')) { sel = null; render() }
+  })
+  window.addEventListener('resize', () => fit())
+
+  render({ instant: true })
+  // a restored tile no longer on offer (2.6: its product since put in Not for HNW on 2.2) leaves the stored answer too,
+  // once, on load (as 2.3 does)
+  if (saved && typeof saved === 'object' && !Array.isArray(saved) && Object.keys(saved).some((id) => !placed[id])) save()
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+  /* t-rank: the stack of ten (3.3, 9.1). Ported from mockups/rank.html; the shared frame stays untouched. */
+  /* ---------- page overrides: the stage frame for the rank ---------- */
+  .c-frame.stage { width: 1120px; }
+  .c-frame.stage .c-body { grid-template-columns: 300px 1fr; }
+  .c-frame.stage .c-side { padding: 30px 30px 0 36px; }
+  .c-frame.stage .c-side .c-i { margin-top: 14px; }
+  .c-frame.stage .c-stage { padding: 0 28px; justify-content: center; }
+
+  /* ---------- the board (tray + ladder share one coordinate space) ---------- */
+  .rk-wrap { position: relative; align-self: center; width: 758px; }
+  .rk-heads { position: relative; height: 30px; font-family: var(--font-ui); }
+  .rk-head { position: absolute; top: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); line-height: 20px; }
+  .rk-head b { font-weight: 500; color: var(--harvest); letter-spacing: .04em; margin-left: 6px; }
+  .rk-again { position: absolute; right: 0; top: 0; line-height: 20px; padding: 0; }
+  .rk-again[disabled] { color: var(--rule-soft); cursor: default; text-decoration-color: transparent; }
+
+  .rk-board { position: relative; height: 382px; --dur: 260ms; touch-action: none; }
+  .rk-tray-floor { position: absolute; left: -8px; top: -8px; width: 354px; height: 398px; background: var(--marble); border-radius: 2px; }
+  .rk-tray-done { position: absolute; left: 0; width: 340px; top: 170px; text-align: center; font-family: var(--font-text); font-style: italic; color: var(--muted); font-size: 15px; opacity: 0; transition: opacity 300ms 200ms; pointer-events: none; }
+  .rk-board.all .rk-tray-done { opacity: 1; }
+
+  .rk-slot { position: absolute; left: 384px; width: 374px; height: 34px; display: flex; align-items: center; }
+  .rk-slot .well { position: absolute; left: 34px; right: 0; top: 0; bottom: 0; border: 1.5px dotted var(--rule); border-radius: 2px; transition: background-color 150ms, box-shadow 150ms, border-color 150ms; }
+  .rk-slot.free { cursor: pointer; }
+  .rk-board.dragging .rk-slot .well, .rk-board.holding .rk-slot.free .well { border-color: var(--harvest); background: rgba(230,207,154,.22); }
+  .rk-slot.target .well { border-style: solid; border-color: var(--harvest); background: rgba(230,207,154,.45); box-shadow: 0 0 0 3px rgba(210,169,78,.28); }
+  .rk-num { position: relative; width: 30px; height: 30px; margin-left: 0; display: flex; align-items: center; justify-content: center; border: 0; background: none; padding: 0; border-radius: 50%;
+    font-family: var(--font-display); font-size: 19px; line-height: 1; color: var(--ink); font-variant-numeric: lining-nums; cursor: default; }
+  .rk-slot:first-child .rk-num { color: var(--harvest); font-weight: 500; font-size: 21px; }
+  .rk-num.can { cursor: pointer; }
+  .rk-num.can:hover, .rk-num.can:focus-visible { background: var(--ground); box-shadow: inset 0 0 0 1px var(--rule); outline: none; }
+  .rk-num.can:hover::after, .rk-num.can:focus-visible::after { content: "Remove"; position: absolute; right: calc(100% + 6px); top: 50%; transform: translateY(-50%); white-space: nowrap;
+    font-family: var(--font-ui); font-size: 11px; letter-spacing: .04em; color: var(--paper); background: var(--ink); padding: 3px 7px; border-radius: 2px; pointer-events: none; }
+
+  /* ---------- the block ---------- */
+  .rk-block { position: absolute; left: 0; top: 0; width: 340px; height: 34px; display: flex; align-items: center; gap: 0;
+    background: var(--wheat-light); border-left: 2px solid var(--bronze); border-radius: 2px;
+    box-shadow: 0 1px 0 rgba(122,62,18,.18), 0 2px 5px rgba(13,12,11,.07);
+    font-family: var(--font-text); font-size: 15px; line-height: 18px; color: var(--ink);
+    cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; outline: none;
+    transition: left var(--dur) cubic-bezier(.3,.7,.2,1), top var(--dur) cubic-bezier(.3,.7,.2,1), transform 220ms cubic-bezier(.3,.7,.2,1), box-shadow 150ms, background-color 150ms; z-index: 2; }
+  @media (hover: hover) { .rk-block:hover { background: #EAD5A5; } }
+  .rk-block:focus-visible { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--navy); }
+  .rk-grip { flex: none; width: 24px; height: 100%; background-image: radial-gradient(circle, rgba(122,62,18,.55) 1.1px, transparent 1.4px); background-size: 5px 5px; background-repeat: repeat; background-position: 8px 10px; background-clip: content-box; padding: 10px 6px 10px 8px; box-sizing: border-box; }
+  .rk-label { flex: 1; min-width: 0; white-space: nowrap; padding-right: 10px; letter-spacing: -0.003em; }
+  .rk-disc { display: none; }
+  .rk-block.placed { z-index: 3; }
+  .rk-block.lifted { z-index: 6; transform: translateY(-2px) !important; background: #EDD9AB; box-shadow: 0 0 0 1.5px var(--navy), 0 8px 18px rgba(20,35,59,.20); }
+  .rk-block.drag { z-index: 30; cursor: grabbing; transition: transform 150ms, box-shadow 150ms; transform: translateY(-2px) rotate(0deg) scale(1.015) !important; box-shadow: 0 16px 30px rgba(13,12,11,.22), 0 2px 4px rgba(13,12,11,.10); }
+  .rk-block.settle { animation: rk-settle 220ms ease-out; }
+  @keyframes rk-settle { 0% { box-shadow: 0 10px 20px rgba(13,12,11,.18) } 100% { box-shadow: 0 1px 0 rgba(122,62,18,.18), 0 2px 5px rgba(13,12,11,.07) } }
+
+  /* ---------- lift controls ---------- */
+  .rk-arrows { position: absolute; left: 352px; width: 28px; display: flex; flex-direction: column; gap: 2px; z-index: 8; opacity: 0; pointer-events: none; transition: opacity 150ms, top 150ms; }
+  .rk-arrows.on { opacity: 1; pointer-events: auto; }
+  .rk-arrows button { width: 28px; height: 25px; border: 1px solid var(--navy); background: var(--ground); color: var(--navy); border-radius: 2px; padding: 0; cursor: pointer;
+    font-family: var(--font-ui); font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .rk-arrows button:hover { background: var(--navy); color: var(--paper); }
+  .rk-arrows button[disabled] { border-color: var(--rule-soft); color: var(--rule-soft); background: var(--paper); cursor: default; }
+
+  .rk-tip { position: absolute; z-index: 40; pointer-events: none; font-family: var(--font-ui); font-size: 12px; line-height: 16px; color: var(--paper); background: var(--ink);
+    padding: 5px 9px; border-radius: 2px; white-space: nowrap; opacity: 0; transform: translateY(3px); transition: opacity 150ms, transform 150ms; }
+  .rk-tip.on { opacity: 1; transform: translateY(0); }
+  .rk-tip::after { content: ""; position: absolute; left: 18px; bottom: -4px; width: 8px; height: 8px; background: var(--ink); transform: rotate(45deg); }
+
+  .rk-status { height: 34px; margin-top: 8px; display: flex; align-items: center; justify-content: flex-end; font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+  .rk-hold { opacity: 0; transition: opacity 200ms; }
+  .rk-hold.on { opacity: 1; }
+  .rk-status kbd { font-family: var(--font-ui); font-size: 11px; border: 1px solid var(--rule); border-radius: 2px; padding: 0 4px; margin: 0 1px; color: var(--ink-2); background: var(--ground); }
+
+  .rk-toast { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: none; align-items: center; gap: 14px; background: var(--ink); color: var(--paper); border-radius: 2px;
+    font-family: var(--font-ui); font-size: 13px; padding: 0 6px 0 12px; height: 32px; }
+  .rk-toast.on { display: flex; animation: rk-toast 200ms ease-out; }
+  .rk-toast button { background: none; border: 0; color: var(--wheat); font: 600 13px var(--font-ui); text-decoration: underline; text-underline-offset: 3px; padding: 0 8px; height: 32px; cursor: pointer; }
+  @keyframes rk-toast { from { opacity: 0; transform: translateY(-30%) } to { opacity: 1; transform: translateY(-50%) } }
+
+  /* 1280x650: the board is 382 px; trim the side's top padding so a long band never crowds it */
+  @media (min-width: 701px) and (max-height: 720px) {
+    .c-frame.stage .c-side { padding-top: 24px; }
+  }
+
+  /* ---------- phone: order-by-click ---------- */
+  @media (max-width: 700px) {
+    .c-frame.stage .c-side { padding: 14px 20px 0; }
+    .c-frame.stage .c-side .c-i { margin-top: 6px; }
+    .c-frame.stage .c-stage { padding: 12px 20px 0; justify-content: flex-start; }
+    .rk-wrap { width: 100%; align-self: stretch; }
+    .rk-heads { display: none; }
+    .rk-board { height: 307px; --dur: 300ms; }
+    .rk-tray-floor, .rk-tray-done, .rk-slot, .rk-arrows, .rk-tip { display: none; }
+    .rk-block { width: 100%; height: 28px; font-size: 13px; line-height: 15px; transform: none !important; }
+    .rk-block.lifted { transform: none !important; }
+    .rk-block.drag { transform: scale(1.01) !important; }
+    .rk-disc { display: flex; flex: none; width: 20px; height: 20px; margin: 0 9px 0 7px; border-radius: 50%; align-items: center; justify-content: center;
+      border: 1px dotted rgba(122,62,18,.6); font-family: var(--font-display); font-size: 12px; font-weight: 500; color: var(--paper); font-variant-numeric: lining-nums; }
+    .rk-block.num .rk-disc { border: 0; background: var(--harvest); }
+    .rk-disc.pop { animation: rk-pop 240ms cubic-bezier(.3,.7,.2,1.4); }
+    @keyframes rk-pop { 0% { transform: scale(.4) } 100% { transform: scale(1) } }
+    .rk-label { white-space: normal; overflow: hidden; max-height: 28px; display: flex; align-items: center; padding-right: 4px; }
+    .rk-grip { order: 3; width: 22px; padding: 7px 7px 7px 6px; background-position: 6px 7px; opacity: .25; transition: opacity 200ms; }
+    .rk-board.sorted .rk-grip { opacity: 1; }
+    .rk-status { height: 34px; margin-top: 8px; position: relative; justify-content: flex-end; }
+    .rk-hold { display: none; }
+  }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'rank') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const ui = CeresPreview.mount(step, { stage: true })
+  const D = step.data, U = D.ui
+  const esc = ui.esc
+  const fill = CeresNav.fill
+
+  const RESPONDENT = 'K7Q2-MX'     // the per-person seed (logged as <store>.order in the real build); fixed in the preview
+  const N = D.blocks.length, ROW = 38, PROW = 31, LAD_X = 384, BLK_X = 418, SNAP = 24
+
+  // ---------- the object, drawn from step.data ----------
+  // The hold line marks its arrows as keys: "Move it with ↑ ↓, ..." → <kbd>↑</kbd> <kbd>↓</kbd>
+  const holdHTML = esc(U.holdLine).replace(/([↑↓])/g, '<kbd>$1</kbd>')
+  // The phone toast is "Number {n} cleared · Undo": the text, then the Undo button
+  const toastParts = String(U.phoneToast).split(' · ')
+  const toastText = toastParts[0], undoLabel = toastParts[1] || ''
+  ui.obj.innerHTML = `
+    <div class="rk-wrap" id="wrap">
+      <div class="rk-heads">
+        <span class="rk-head" style="left:0">${esc(U.trayHead)}<b id="left-n">${N}</b></span>
+        <span class="rk-head" style="left:418px">${esc(U.ladderHead)}</span>
+        <button type="button" class="c-link rk-again" id="again">${esc(U.clear)}</button>
+      </div>
+      <div class="rk-board" id="board" aria-label="${esc(step.question)}">
+        <div class="rk-tray-floor"></div>
+        <div class="rk-tray-done">${esc(U.trayDone)}</div>
+        <div id="slots"></div>
+        <div class="rk-arrows" id="arrows">
+          <button type="button" id="up" aria-label="Move up">↑</button>
+          <button type="button" id="down" aria-label="Move down">↓</button>
+        </div>
+        <div class="rk-tip" id="tip"></div>
+      </div>
+      <div class="rk-status" id="status">
+        <span class="rk-hold" id="hold-line">${holdHTML}</span>
+        <div class="rk-toast" id="toast" role="status"><span id="toast-t"></span><button type="button" id="undo">${esc(undoLabel)}</button></div>
+        <button type="button" class="c-link rk-again" id="again-p" style="position:static;display:none">${esc(U.clear)}</button>
+      </div>
+    </div>`
+
+  // ---------- seeded shuffle ----------
+  function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) } return h >>> 0 }
+  function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+
+  const $ = (id) => document.getElementById(id)
+  const board = $('board'), slotsEl = $('slots'), arrows = $('arrows'), tip = $('tip')
+  const toast = $('toast')
+  const phoneMq = window.matchMedia('(max-width: 700px)')
+
+  let blocks, els, trayPos, ladder, plist, sorted, lifted, drag, preview, undoSnap, toastTimer
+  const isPhone = () => phoneMq.matches
+
+  // ---------- build ----------
+  function build() {
+    const r = rng(D.seed != null ? D.seed : hash(RESPONDENT + ':' + D.store))
+    blocks = D.blocks.map((b) => ({ id: b.id, label: b.label, hint: b.hint }))
+    if (D.shuffle) for (let i = blocks.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [blocks[i], blocks[j]] = [blocks[j], blocks[i]] }
+    // the loose tray: each block keeps its own spot, a small sideways jitter and a tilt of up to 2 degrees
+    // Tilts drift from block to block (a loose stack, not a zig-zag), within ±2 degrees; each block then sits just below
+    // its neighbour's lowest corner with a clear gap, so no two tilted blocks ever touch or overlap.
+    const rots = [], xs = []
+    let t0 = (r() < 0.5 ? -1 : 1) * (0.6 + r() * 0.9)
+    for (let i = 0; i < blocks.length; i++) {
+      if (i) { t0 += (r() * 2 - 1) * 1.1; if (Math.abs(t0) > 1.9) t0 = Math.sign(t0) * (1.9 - r() * 0.5); if (Math.abs(t0) < 0.3) t0 = (t0 < 0 ? -1 : 1) * (0.3 + r() * 0.3) }
+      rots.push(t0); xs.push(Math.round(r() * 8 - 4))
+    }
+    const GAP = 3, TOP = -2, SPAN = 386
+    let k = 1, cys
+    for (;;) {
+      const s = rots.map((d) => Math.sin(d * k * Math.PI / 180)), c = rots.map((d) => Math.cos(d * k * Math.PI / 180))
+      const steps = rots.slice(1).map((_, i) => 17 * (c[i + 1] + c[i]) + 170 * Math.abs(s[i + 1] - s[i]) + GAP)
+      const ext = (i) => 170 * Math.abs(s[i]) + 17 * c[i]
+      const total = ext(0) + steps.reduce((a, b) => a + b, 0) + ext(N - 1)
+      if (total <= SPAN || k <= 0.3) {
+        const extra = Math.max(0, (SPAN - total) / (N - 1))
+        cys = [TOP + ext(0)]; steps.forEach((st) => cys.push(cys[cys.length - 1] + st + extra))
+        break
+      }
+      k -= 0.05
+    }
+    trayPos = {}
+    blocks.forEach((b, i) => { trayPos[b.id] = { x: xs[i], y: +(cys[i] - 17).toFixed(1), rot: +(rots[i] * k).toFixed(2), i } })
+    els = {}
+    for (const b of blocks) {
+      const e = document.createElement('div')
+      e.className = 'rk-block'; e.tabIndex = 0; e.setAttribute('role', 'button'); e.dataset.id = b.id
+      e.innerHTML = '<span class="rk-grip" aria-hidden="true"></span><span class="rk-disc" aria-hidden="true"></span><span class="rk-label"></span>'
+      e.querySelector('.rk-label').textContent = b.label
+      wire(e, b.id)
+      board.appendChild(e); els[b.id] = e
+    }
+    slotsEl.innerHTML = ''
+    for (let k = 0; k < N; k++) {
+      const s = document.createElement('div'); s.className = 'rk-slot'; s.style.top = (k * ROW) + 'px'; s.dataset.k = k
+      s.innerHTML = `<button type="button" class="rk-num" tabindex="-1">${k + 1}</button><span class="well"></span>`
+      s.addEventListener('click', (ev) => { if (ev.target.closest('.rk-num.can')) { sendBack(ladder[k]); return } tapSlot(k) })
+      slotsEl.appendChild(s)
+    }
+    ladder = Array(N).fill(null); plist = blocks.map((b) => b.id); sorted = false; lifted = null; drag = null; preview = null
+    // the reviewer's own order, if they played this screen before (rank 1 first)
+    const saved = ui.load()
+    if (Array.isArray(saved)) {
+      const ids = new Set(blocks.map((b) => b.id))
+      saved.filter((id) => ids.has(id)).filter((id, i, a) => a.indexOf(id) === i).slice(0, N).forEach((id, i) => { ladder[i] = id })
+      if (placedCount() === N) { plist = ladder.slice(); sorted = true }
+    }
+    layout({ instant: true })
+  }
+
+  function reset(instant) {
+    ladder = Array(N).fill(null); plist = blocks.map((b) => b.id); sorted = false; lifted = null; drag = null; preview = null
+    dropUndo()
+    commit({ instant, dur: 300 })
+  }
+
+  // ---------- arrangement helpers ----------
+  const placedCount = () => ladder.filter(Boolean).length
+  function placeInto(arr, id, j, dir) {
+    if (arr[j] == null) { arr[j] = id; return arr }
+    for (const d of (dir > 0 ? [1, -1] : [-1, 1])) {
+      let e = j; while (e >= 0 && e < N && arr[e] != null) e += d
+      if (e >= 0 && e < N) { for (let k = e; k !== j; k -= d) arr[k] = arr[k - d]; arr[j] = id; return arr }
+    }
+    return arr
+  }
+  function moved(arr, id, j) {
+    const a = arr.slice(), i = a.indexOf(id)
+    if (i < 0) return placeInto(a, id, j, 1)
+    if (i === j) return a
+    a[i] = null; return placeInto(a, id, j, j > i ? -1 : 1)
+  }
+
+  // ---------- layout ----------
+  function layout(o = {}) {
+    const phone = isPhone()
+    board.style.setProperty('--dur', (o.dur || (phone ? 300 : 260)) + 'ms')
+    const lad = (preview && !preview.plist) ? preview : ladder
+    const order = phone ? (preview && preview.plist) || plist : null
+    for (const b of blocks) {
+      const e = els[b.id]
+      if (drag && drag.id === b.id && drag.moved) continue
+      if (o.instant) e.style.transition = 'none'
+      const at = lad.indexOf(b.id)
+      if (phone) {
+        e.style.left = '0px'; e.style.top = (order.indexOf(b.id) * PROW) + 'px'; e.style.transform = ''
+        const n = ladder.indexOf(b.id)
+        const disc = e.querySelector('.rk-disc'); const was = disc.textContent
+        disc.textContent = n >= 0 ? String(n + 1) : ''
+        if (n >= 0 && was !== disc.textContent && !o.instant && !o.quiet) { disc.classList.remove('pop'); void disc.offsetWidth; disc.classList.add('pop') }
+        e.classList.toggle('num', n >= 0)
+        e.setAttribute('aria-label', n >= 0 ? `${b.label}, number ${n + 1}. Tap to clear.` : `${b.label}. Tap to give it number ${placedCount() + 1}.`)
+      } else if (at >= 0) {
+        e.style.left = BLK_X + 'px'; e.style.top = (at * ROW) + 'px'; e.style.transform = 'rotate(0deg)'
+        e.setAttribute('aria-label', `${b.label}, placed at ${at + 1}. ${lifted === b.id ? 'Lifted: arrow keys move it, Enter puts it down.' : 'Enter to lift.'}`)
+      } else {
+        const t = trayPos[b.id]
+        e.style.left = t.x + 'px'; e.style.top = t.y + 'px'; e.style.transform = `rotate(${t.rot}deg)`
+        e.setAttribute('aria-label', `${b.label}. Enter to place at the next free number.`)
+      }
+      e.classList.toggle('placed', at >= 0)
+      e.classList.toggle('lifted', lifted === b.id && !phone)
+      if (o.instant) { void e.offsetWidth; e.style.transition = '' }
+    }
+    // slots
+    slotsEl.querySelectorAll('.rk-slot').forEach((s, k) => {
+      const occ = ladder[k]
+      s.classList.toggle('free', !occ)
+      const num = s.querySelector('.rk-num')
+      num.classList.toggle('can', !!occ); num.tabIndex = occ ? 0 : -1
+      num.setAttribute('aria-label', occ ? `Number ${k + 1}: remove ${labelOf(occ)}` : `Number ${k + 1}, empty`)
+      s.classList.toggle('target', !!(drag && drag.moved && drag.over === k))
+    })
+    // lift controls
+    const li = lifted ? ladder.indexOf(lifted) : -1
+    arrows.classList.toggle('on', li >= 0 && !phone)
+    if (li >= 0) { arrows.style.top = (li * ROW + 17 - 26) + 'px'; $('up').disabled = li === 0; $('down').disabled = li === N - 1 }
+    board.classList.toggle('holding', li >= 0)
+    board.classList.toggle('dragging', !!(drag && drag.moved))
+    board.classList.toggle('all', placedCount() === N)
+    board.classList.toggle('sorted', phone && sorted && placedCount() === N)
+    $('hold-line').classList.toggle('on', li >= 0)
+    // counts, the Next hint (Next itself always works), Clear all
+    const left = N - placedCount()
+    $('left-n').textContent = left ? String(left) : ''
+    if (left > 0) ui.status(false, fill(U.missing, { n: left }))
+    else ui.status(true)
+    const any = placedCount() > 0
+    $('again').disabled = !any
+    $('again-p').style.display = phone && any ? '' : 'none'
+    if (!drag) refreshTip(o.dur || 260)
+  }
+  const labelOf = (id) => (blocks.find((b) => b.id === id) || {}).label
+
+  /** The reviewer's answer: the placed blocks in ladder order, rank 1 first (nothing placed: cleared, so samples stand in). */
+  function save() { const order = ladder.filter(Boolean); ui.save(order.length ? order : undefined) }
+  function commit(o) { layout(o); save() }
+  function settle(id) { const e = els[id]; if (!e) return; setTimeout(() => { e.classList.remove('settle'); void e.offsetWidth; e.classList.add('settle') }, 250) }
+
+  // ---------- laptop actions ----------
+  function tapBlock(id) {
+    if (isPhone()) return tapPhone(id)
+    const at = ladder.indexOf(id)
+    if (at < 0) {
+      const free = ladder.indexOf(null); if (free < 0) return
+      ladder[free] = id; lifted = id
+      commit({ dur: 280 }); settle(id)
+    } else {
+      lifted = lifted === id ? null : id
+      layout()
+    }
+  }
+  function tapSlot(k) {
+    if (isPhone()) return
+    if (ladder[k]) { tapBlock(ladder[k]); return }
+    if (!lifted) return
+    const i = ladder.indexOf(lifted)
+    ladder[i] = null; ladder[k] = lifted
+    commit({ dur: 220 })
+  }
+  function nudge(d) {
+    if (!lifted) return
+    const i = ladder.indexOf(lifted), j = i + d
+    if (i < 0 || j < 0 || j >= N) return
+    ladder = moved(ladder, lifted, j)
+    commit({ dur: 150 })
+  }
+  function sendBack(id) {
+    if (!id) return
+    const i = ladder.indexOf(id); if (i < 0) return
+    ladder[i] = null; if (lifted === id) lifted = null
+    commit({ dur: 280 })
+  }
+
+  // ---------- phone actions ----------
+  function tapPhone(id) {
+    const n = ladder.indexOf(id)
+    if (n < 0) {
+      const free = ladder.indexOf(null); if (free < 0) return
+      ladder[free] = id; dropUndo()
+      commit({})
+      if (placedCount() === N && plist.join() !== ladder.join()) setTimeout(resort, 380)
+    } else {
+      undoSnap = { ladder: ladder.slice(), plist: plist.slice(), sorted }
+      ladder.splice(n, 1); ladder.push(null)
+      commit({})
+      showToast(fill(toastText, { n: n + 1 }))
+    }
+  }
+  function resort() { if (placedCount() !== N) return; plist = ladder.slice(); sorted = true; commit({ dur: 300, quiet: true }) }
+  function showToast(t) {
+    $('toast-t').textContent = t; toast.classList.remove('on'); void toast.offsetWidth; toast.classList.add('on')
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 5000)
+  }
+  function hideToast() { toast.classList.remove('on'); clearTimeout(toastTimer) }
+  function dropUndo() { hideToast(); undoSnap = null }
+  $('undo').addEventListener('click', () => {
+    if (!undoSnap) return
+    ladder = undoSnap.ladder; plist = undoSnap.plist; sorted = undoSnap.sorted; undoSnap = null
+    hideToast(); commit({})
+  })
+
+  // ---------- pointer: tap or drag ----------
+  function boardXY(ev) { const r = board.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top } }
+  function wire(e, id) {
+    e.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== 0) return
+      e.setPointerCapture(ev.pointerId)
+      const p = boardXY(ev)
+      drag = { id, sx: p.x, sy: p.y, ox: p.x - e.offsetLeft, oy: p.y - e.offsetTop, moved: false, over: null, from: ladder.indexOf(id) }
+    })
+    e.addEventListener('pointermove', (ev) => { if (drag && drag.id === id) dragMove(boardXY(ev)) })
+    e.addEventListener('pointerup', () => {
+      if (!drag || drag.id !== id) return
+      const d = drag
+      if (d.cancel) { drag = null; return }               // a swipe that could not drag is not a tap
+      if (!d.moved) { drag = null; tapBlock(id); return }
+      dragDrop()
+    })
+    e.addEventListener('pointercancel', () => { if (drag && drag.id === id) { drag = null; preview = null; e.classList.remove('drag'); layout() } })
+    e.addEventListener('keydown', (ev) => {
+      const k = ev.key
+      if (ev.altKey || ev.ctrlKey || ev.metaKey) return      // Alt+arrows belong to the frame (Next / Back)
+      if (k === 'Enter' || k === ' ') { ev.preventDefault(); ev.stopPropagation(); if (!isPhone() && lifted === id) { lifted = null; layout() } else tapBlock(id); return }
+      if (isPhone()) return
+      if ((k === 'ArrowUp' || k === 'ArrowDown') && ladder.includes(id)) {
+        ev.preventDefault(); if (lifted !== id) lifted = id; nudge(k === 'ArrowUp' ? -1 : 1); e.focus(); return
+      }
+      if (k === 'Escape' && lifted) { lifted = null; layout() }
+      if ((k === 'Delete' || k === 'Backspace') && ladder.includes(id)) { ev.preventDefault(); sendBack(id) }
+    })
+    e.addEventListener('mouseenter', () => showTip(id))
+    e.addEventListener('mouseleave', () => hideTip())
+    e.addEventListener('focus', () => showTip(id))
+    e.addEventListener('blur', () => hideTip())
+  }
+
+  function dragMove(p) {
+    const phone = isPhone(), e = els[drag.id]
+    if (!drag.moved) {
+      if (Math.hypot(p.x - drag.sx, p.y - drag.sy) < 6) return
+      if (phone && !(sorted && placedCount() === N)) { drag.cancel = true; return }   // phone drag is fine-tuning after the re-sort
+      drag.moved = true; lifted = null; hideTip()
+      e.classList.add('drag')
+    }
+    if (phone) {
+      const top = Math.max(-6, Math.min((N - 1) * PROW + 6, p.y - drag.oy))
+      e.style.top = top + 'px'
+      const j = Math.max(0, Math.min(N - 1, Math.round(top / PROW)))
+      const pl = plist.slice(); pl.splice(pl.indexOf(drag.id), 1); pl.splice(j, 0, drag.id)
+      preview = { plist: pl }
+      board.style.setProperty('--dur', '150ms')
+      for (const b of blocks) if (b.id !== drag.id) els[b.id].style.top = (pl.indexOf(b.id) * PROW) + 'px'
+      drag.over = j
+      return
+    }
+    const x = p.x - drag.ox, y = p.y - drag.oy
+    e.style.left = x + 'px'; e.style.top = y + 'px'
+    // which slot: the block's centre, within 24 px of a slot
+    const cx = x + 170, cy = y + 17
+    let over = null
+    if (cx > LAD_X - SNAP && cx < LAD_X + 374 + SNAP + 170) {
+      const k = Math.round((cy - 17) / ROW)
+      if (k >= 0 && k < N && Math.abs(cy - (k * ROW + 17)) <= 17 + SNAP) over = k
+      else if (cy < 17 && cy > -SNAP) over = 0
+      else if (cy > (N - 1) * ROW + 17 && cy < N * ROW + SNAP) over = N - 1
+    }
+    const toTray = over == null && cx < 340 + SNAP
+    if (over !== drag.over || toTray !== drag.toTray) {
+      drag.over = over; drag.toTray = toTray
+      preview = over != null ? moved(ladder, drag.id, over) : null
+      if (preview == null && toTray && drag.from >= 0) { preview = ladder.slice(); preview[drag.from] = null }
+      layout({ dur: 150 })
+    }
+  }
+  function dragDrop() {
+    const d = drag, e = els[d.id], phone = isPhone()
+    drag = null; e.classList.remove('drag')
+    if (phone) {
+      if (preview && preview.plist) { plist = preview.plist; ladder = plist.slice(); dropUndo() }
+      preview = null; commit({ dur: 150 }); settle(d.id); return
+    }
+    if (d.over != null) { ladder = moved(ladder, d.id, d.over); preview = null; commit({ dur: 200 }); settle(d.id); return }
+    if (d.toTray && d.from >= 0) { ladder[d.from] = null; preview = null; commit({ dur: 260 }); return }
+    preview = null; layout({ dur: 260 })   // dropped nowhere: it goes home
+  }
+
+  // ---------- hints on hover or focus (laptop) ----------
+  function showTip(id) {
+    if (isPhone() || drag) return
+    const b = blocks.find((x) => x.id === id); if (!b || !b.hint) return hideTip()
+    const e = els[id]
+    tip.textContent = b.hint
+    tip.style.left = (e.offsetLeft + 24) + 'px'; tip.style.top = (e.offsetTop - 32) + 'px'
+    tip.classList.add('on')
+  }
+  function hideTip() { tip.classList.remove('on') }
+  let tipTimer
+  function refreshTip(dur) {
+    // a hint shown for a keyboard-focused block follows it once it has moved; never left floating where it was
+    if (!tip.classList.contains('on')) return
+    hideTip(); clearTimeout(tipTimer)
+    const a = document.activeElement
+    if (a && a.classList.contains('rk-block') && a.matches(':focus-visible')) tipTimer = setTimeout(() => { if (document.activeElement === a && !drag) showTip(a.dataset.id) }, dur + 30)
+  }
+
+  // ---------- controls ----------
+  $('up').addEventListener('click', () => { nudge(-1); if (lifted) els[lifted].focus() })
+  $('down').addEventListener('click', () => { nudge(1); if (lifted) els[lifted].focus() })
+  const again = () => reset(false)
+  $('again').addEventListener('click', again)
+  $('again-p').addEventListener('click', again)
+  document.addEventListener('pointerdown', (ev) => {
+    if (lifted && !ev.target.closest('.rk-block, .rk-slot, .rk-arrows')) { lifted = null; layout() }
+  })
+  phoneMq.addEventListener('change', () => {
+    lifted = null
+    if (isPhone()) { const f = ladder.filter(Boolean); ladder = f.concat(Array(N - f.length).fill(null)); if (f.length === N) { plist = ladder.slice(); sorted = true } }
+    layout({ instant: true })
+  })
+
+  build()
+})()
+</script>
+</body>
+</html>

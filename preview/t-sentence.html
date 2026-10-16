@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-sentence: a sentence set large across a marble panel, with typed number slots, − / + steppers, word chips, a
+   pinned opt-out and soft checks (design §4, "The sentence"; 4.1, 4.2, 4.3a, 5.4, 6.1a, 6.2 with two numbers, 6.4a,
+   7.4a, 9.4).
+   The number box takes the split-box look from mockups/ledger.html. Page-only CSS; the shared frame is untouched. */
+.c-obj.sn-obj { padding-top: 22px; }
+.sn { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sn-panel { --fs: 34px; position: relative; background: var(--marble); border: 1px solid #E2DDD3; border-radius: 2px; padding: 26px 32px 28px; transition: opacity 200ms; }
+.sn-panel::before { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(140,133,122,.18); pointer-events: none; }
+.sn-row, .sn-text { margin: 0; font-family: var(--font-display); font-weight: 400; font-variation-settings: 'opsz' 14; font-size: var(--fs); line-height: 1.5; color: var(--ink); text-wrap: pretty; font-variant-numeric: lining-nums; }
+.sn-row + .sn-row { margin-top: .35em; padding-top: .35em; border-top: 1px solid rgba(140,133,122,.28); }
+.sn-role { font-weight: 500; }
+.sn-panel.off .sn-row { opacity: .32; }
+
+/* the number slot: an underlined box with its unit around it; steppers under it */
+.sn-slot { display: inline-flex; flex-direction: column; align-items: center; vertical-align: baseline; white-space: nowrap; }
+.sn-line { display: inline-flex; align-items: baseline; }
+.sn-box { position: relative; display: inline-block; margin: 0 .08em; border-bottom: 2px solid var(--ink); background: rgba(255,255,255,.72); border-radius: 2px 2px 0 0; transition: background 150ms, border-color 150ms, box-shadow 150ms; }
+.sn-box.cue { border-color: var(--navy); box-shadow: 0 0 0 1px rgba(20,35,59,.14); background: #FFFDF6; }
+.sn-box:focus-within { background: #FFFFFF; border-color: var(--navy); box-shadow: 0 0 0 2px rgba(20,35,59,.18); }
+.sn-box.bad { border-color: var(--amber); background: #FFF8EE; }
+.sn-in { all: unset; box-sizing: content-box; display: block; height: 1.25em; line-height: 1.25em; padding: 0 .12em; text-align: center; font: inherit; color: var(--ink); caret-color: var(--navy); }
+.sn-in::placeholder { color: transparent; }
+.sn-steps { display: flex; justify-content: center; width: 0; gap: 8px; margin-top: 7px; line-height: 1; }   /* zero width: the steppers never widen the slot */
+.sn-st { all: unset; box-sizing: border-box; flex: none; width: 36px; height: 28px; display: grid; place-items: center; border: 1px solid var(--rule); border-radius: 2px; background: var(--ground);
+  font-family: var(--font-ui); font-size: 17px; font-weight: 500; color: var(--ink); cursor: pointer; transition: background 120ms, transform 120ms; -webkit-user-select: none; user-select: none; }
+.sn-st:hover { background: #F3F1EC; border-color: var(--ink); }
+.sn-st:active { transform: translateY(1px); }
+.sn-st:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+
+/* several rows (4.3a): each row's steppers sit at its right end, so every row keeps its line height */
+.sn-panel.multi .sn-row { display: flex; align-items: center; gap: 14px; }
+.sn-panel.multi .sn-text { flex: 1; min-width: 0; }
+.sn-rsteps { flex: none; display: flex; gap: 6px; }
+.sn-rsteps .sn-st { width: 32px; height: 26px; }
+.sn-panel.multi { padding: 14px 22px 14px; }
+.sn-panel.multi .sn-row + .sn-row { margin-top: .22em; padding-top: .22em; }
+/* the last fit step for many rows at the smallest type (4.3a with all five roles on a phone): tighter rows */
+.sn-panel.multi.tight { padding-top: 8px; padding-bottom: 8px; }
+.sn-panel.multi.tight .sn-row, .sn-panel.multi.tight .sn-text { line-height: 1.38; }
+.sn-panel.multi.tight .sn-row + .sn-row { margin-top: .12em; padding-top: .12em; }
+
+/* the word chips, on a slot line inside the sentence */
+.sn-chips { display: inline-flex; align-items: baseline; gap: .12em; padding: 0 .1em .02em; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+.sn-chips .dot { color: var(--rule); }
+.sn-chip { all: unset; box-sizing: border-box; padding: 0 .16em; border-radius: 2px; font: inherit; font-size: .9em; color: var(--muted); cursor: pointer; transition: color 150ms, background 150ms; }
+.sn-chip:hover { color: var(--ink); background: rgba(255,255,255,.7); }
+.sn-chip:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
+.sn-chips.set .sn-chip { color: rgba(73,69,64,.55); }
+.sn-chips.set .sn-chip.on { color: var(--ink); font-weight: 600; }
+.sn-chip.on { animation: snSet 220ms ease-out; }
+@keyframes snSet { 0% { transform: scale(1.12); } 100% { transform: none; } }
+
+/* the soft check: one grey line, Next still works */
+.sn-check { margin: 12px 2px 0; min-height: 19px; font-family: var(--font-ui); font-size: 14px; line-height: 19px; color: var(--muted); }
+.sn-check:empty { visibility: hidden; }
+.sn-check.on { animation: snIn 240ms ease-out; }
+@keyframes snIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+
+/* the pinned opt-out (4.2) */
+.sn-opt { all: unset; box-sizing: border-box; align-self: flex-start; margin-top: 10px; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 16px 8px 12px;
+  border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--ground); cursor: pointer; font-family: var(--font-ui); font-size: 15px; line-height: 19px; color: var(--ink); transition: border-color 150ms, background 150ms; }
+.sn-opt i { flex: none; width: 18px; height: 18px; border: 1.5px solid var(--rule); border-radius: 50%; display: grid; place-items: center; background: #fff; }
+.sn-opt i::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ground); }
+.sn-opt:hover { border-color: var(--ink); }
+.sn-opt[aria-pressed="true"] { border-color: var(--forest); background: #F2F5F1; box-shadow: inset 0 0 0 1px var(--forest); }
+.sn-opt[aria-pressed="true"] i { border-color: var(--forest); background: var(--forest); }
+.sn-opt:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+
+@media (min-width: 701px) and (max-height: 720px) {
+  .c-obj.sn-obj { padding-top: 14px; }
+  .sn-panel { padding: 18px 26px 20px; }
+  .sn-steps { margin-top: 5px; }
+  .sn-st { height: 26px; }
+  .sn-check { margin-top: 8px; }
+  .sn-opt { margin-top: 6px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
+}
+@media (max-width: 700px) {
+  .c-obj.sn-obj { padding-top: 14px; }
+  .sn-panel { --fs: 22px; padding: 16px 18px 18px; }
+  .sn-panel::before { inset: 4px; }
+  .sn-box { border-bottom-width: 2px; }
+  .sn-steps { gap: 10px; margin-top: 6px; }
+  .sn-st { width: 40px; height: 30px; }
+  .sn-check { font-size: 13px; line-height: 17px; margin-top: 10px; }
+  .sn-opt { font-size: 14px; line-height: 18px; padding: 8px 12px 8px 10px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'sentence') { CeresNav.go(step.id); return }
+  const P = window.CeresPreview
+  const S = window.CERES_SCRIPT
+  const esc = P.esc
+  const D = step.data
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const narrow = () => window.matchMedia('(max-width: 700px)').matches
+  const ui = P.mount(step, { objClass: 'sn-obj' })
+
+  /* ------------------------------------------------ the rows: the script's own, or 4.3a's one row per role */
+  let rows = D.rows || []
+  if (D.rowsFrom) {
+    const F = D.rowsFrom
+    const got = CeresNav.answers.get(F.step)
+    const pickRoles = (a) => F.roles.filter((r) => a && a[r] === F.stamp)
+    let roles = pickRoles(got)
+    if (!got || typeof got !== 'object' || !Object.keys(got).length) {
+      roles = D.sampleRoles.slice()
+      ui.previewNote(S.sampleNote)
+    } else if (!roles.length) {
+      roles = D.sampleRoles.slice()
+      ui.previewNote(`No role is stamped Only above an amount on your ${F.step}, so this would not show in the survey. Sample rows stand in.`)
+    }
+    rows = roles.map((role) => ({ parts: D.rowParts.map((p) => {
+      if (typeof p === 'string') return p
+      if (p.slot === 'role') return { slot: 'text', text: D.roleWords[role] }
+      if (p.slot === 'number') return Object.assign({}, p, { id: p.id === '{role}' ? role : p.id })
+      return p
+    }) }))
+  }
+  const multi = rows.length > 1
+  const slots = []          // number slots: { id, def }
+  const chipSlots = []      // chip slots: { id, def }
+  rows.forEach((r) => r.parts.forEach((p) => {
+    if (p && p.slot === 'number') slots.push({ id: p.id, def: p })
+    if (p && p.slot === 'chips') chipSlots.push({ id: p.id, def: p })
+  }))
+  const slotDef = (id) => (slots.find((s) => s.id === id) || {}).def
+
+  /* ------------------------------------------------ numbers */
+  const dec = (d) => d.decimals || 0
+  const big = (d) => d.wide || d.max >= 1000
+  function fmt(v, d) {
+    if (v == null || isNaN(v)) return ''
+    const r = Math.round(v * Math.pow(10, dec(d))) / Math.pow(10, dec(d))
+    return big(d) ? r.toLocaleString('en-GB', { maximumFractionDigits: dec(d) }) : String(r)
+  }
+  function parse(raw, d) {
+    const t = String(raw).replace(/,/g, '').trim()
+    if (!t || t === '.') return null
+    const v = Number(t)
+    return isNaN(v) ? null : v
+  }
+  const valid = (v, d) => v != null && !isNaN(v) && v >= d.min && v <= d.max
+  /** What typing accepts: digits, one point if the slot takes decimals, at most `decimals` after it. */
+  function clean(raw, d) {
+    let t = String(raw).replace(d.decimals ? /[^\d.,]/g : /[^\d,]/g, '')
+    if (d.decimals) {
+      const i = t.indexOf('.')
+      if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '').slice(0, d.decimals)
+    }
+    const digits = t.replace(/[.,]/g, '').length
+    const maxDigits = String(Math.floor(d.max)).length + (d.decimals || 0)
+    if (digits > maxDigits) t = t.slice(0, t.length - (digits - maxDigits))
+    return t
+  }
+  const widthEm = (d) => {
+    const ch = Math.max(2, fmt(d.max, d).length + (d.decimals ? 2 : 0))
+    return (ch * 0.6 + 0.3).toFixed(2) + 'em'
+  }
+
+  /* ------------------------------------------------ draw the sentence */
+  const ariaFor = (r) => r.parts.map((p) => typeof p === 'string' ? p : p.slot === 'text' ? p.text : '…').join('').replace(/\s+/g, ' ').trim()
+  function partHTML(p, r) {
+    // a hyphenated word ("in-person") stays on one line
+    if (typeof p === 'string') return P.glue(p).replace(/([A-Za-z]+-[A-Za-z]+)/g, '<span class="nw">$1</span>')
+    if (p.slot === 'text') return `<span class="sn-role">${esc(p.text)}</span>`
+    if (p.slot === 'number') {
+      const steps = p.step && !multi ? `<span class="sn-steps"><button type="button" class="sn-st" data-st="${esc(p.id)}" data-d="-1" tabindex="-1">−</button><button type="button" class="sn-st" data-st="${esc(p.id)}" data-d="1" tabindex="-1">+</button></span>` : ''
+      const suf = p.suffix ? `<span class="sn-suf">${P.glue(p.suffix).replace(/^ /, '&nbsp;')}</span>` : ''
+      return `<span class="sn-slot"><span class="sn-line">${p.prefix ? `<span class="sn-pre">${esc(p.prefix)}</span>` : ''}<span class="sn-box" data-box="${esc(p.id)}"><input class="sn-in" data-slot="${esc(p.id)}" type="text" inputmode="${p.decimals ? 'decimal' : 'numeric'}" autocomplete="off" enterkeyhint="next" aria-label="${esc(ariaFor(r))}" style="width:${widthEm(p)}"></span>${suf}</span>${steps}</span>`
+    }
+    if (p.slot === 'chips') {
+      return `<span class="sn-chips" role="radiogroup" data-chips="${esc(p.id)}" aria-label="${esc(ariaFor(r))}">${p.options.map((o, i) => `${i ? '<span class="dot" aria-hidden="true">·</span>' : ''}<button type="button" class="sn-chip" role="radio" aria-checked="false" data-chip="${esc(p.id)}" data-opt="${esc(o.id)}">${esc(o.label)}</button>`).join('')}</span>`
+    }
+    return ''
+  }
+  const opt = D.optOut
+  const rowSteps = (r) => r.parts.filter((p) => p && p.slot === 'number' && p.step).map((p) => `<span class="sn-rsteps"><button type="button" class="sn-st" data-st="${esc(p.id)}" data-d="-1" tabindex="-1">−</button><button type="button" class="sn-st" data-st="${esc(p.id)}" data-d="1" tabindex="-1">+</button></span>`).join('')
+  ui.obj.innerHTML = `
+    <div class="sn">
+      <div class="sn-panel${multi ? ' multi' : ''}" id="panel">${rows.map((r) => multi ? `<div class="sn-row"><p class="sn-text">${r.parts.map((p) => partHTML(p, r)).join('')}</p>${rowSteps(r)}</div>` : `<p class="sn-row">${r.parts.map((p) => partHTML(p, r)).join('')}</p>`).join('')}</div>
+      ${(D.checks || []).length ? '<p class="sn-check" id="check" aria-live="polite"></p>' : ''}
+      ${opt ? `<button type="button" class="sn-opt" id="opt" aria-pressed="false"><i aria-hidden="true"></i><span>${esc(opt.label)}</span></button>` : ''}
+    </div>`
+  const panel = $('#panel'), checkEl = $('#check'), optBtn = $('#opt')
+  const inputs = () => $$('.sn-in')
+
+  /* ------------------------------------------------ state, restored from the reviewer's own answer */
+  const val = {}, chip = {}
+  let never = false
+  const saved = ui.load()
+  if (opt && saved === opt.id) never = true
+  else if (saved && typeof saved === 'object') {
+    slots.forEach((s) => { const v = saved[s.id]; if (typeof v === 'number' && !isNaN(v)) val[s.id] = v })
+    chipSlots.forEach((c) => { const v = saved[c.id]; if (c.def.options.some((o) => o.id === v)) chip[c.id] = v })
+  }
+  slots.forEach((s) => { const i = $(`[data-slot="${s.id}"]`); if (val[s.id] != null) i.value = fmt(val[s.id], s.def) })
+
+  function complete() {
+    if (never) return true
+    return slots.every((s) => valid(val[s.id], s.def)) && chipSlots.every((c) => chip[c.id])
+  }
+  function store() {
+    if (never) { ui.save(opt.id); return }
+    const out = {}
+    slots.forEach((s) => { if (val[s.id] != null) out[s.id] = val[s.id] })
+    chipSlots.forEach((c) => { if (chip[c.id]) out[c.id] = chip[c.id] })
+    ui.save(Object.keys(out).length ? out : undefined)
+  }
+  function draw() {
+    panel.classList.toggle('off', never)
+    if (optBtn) optBtn.setAttribute('aria-pressed', never ? 'true' : 'false')
+    $$('.sn-chips').forEach((g) => {
+      const id = g.dataset.chips
+      g.classList.toggle('set', !!chip[id] && !never)
+      $$('.sn-chip', g).forEach((b) => { const on = chip[id] === b.dataset.opt; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false') })
+    })
+    // a cue on the first empty box, as the ledger's split box
+    let cued = false
+    slots.forEach((s) => {
+      const box = $(`[data-box="${s.id}"]`)
+      const empty = val[s.id] == null
+      box.classList.toggle('cue', !never && empty && !cued)
+      if (empty) cued = true
+    })
+    store()
+    if (complete()) ui.status(true); else ui.status(false)
+  }
+
+  /* ------------------------------------------------ soft checks: shown once a number is committed */
+  function runChecks() {
+    let text = '', usedSample = false
+    if (!never) (D.checks || []).forEach((c) => {
+      if (text) return
+      const w = c.when
+      if (w.custom === 'ceiling-below-floor') {
+        const mm = val.mm
+        if (!valid(mm, slotDef('mm'))) return
+        const wv = CeresNav.value(w.wallet), fv = CeresNav.value(w.floor)
+        const base = wv.value && +wv.value.base
+        const floor = fv.value && (typeof fv.value === 'object' ? +fv.value.mm : +fv.value)
+        if (!(base > 0) || !(floor > 0)) return
+        if (mm / (base / 100) <= floor) { text = c.text; usedSample = wv.sample || fv.sample }
+        return
+      }
+      const v = val[w.slot]
+      if (!valid(v, slotDef(w.slot))) return
+      const hit = (w.gt != null && v > w.gt) || (w.lt != null && v < w.lt) || (w.orGt != null && v > w.orGt)
+      if (hit) text = c.text.replace(/\[N\]/g, fmt(v, slotDef(w.slot)))
+    })
+    // out of range: the box turns amber (the Next hint names the range)
+    slots.forEach((s) => $(`[data-box="${s.id}"]`).classList.toggle('bad', !never && val[s.id] != null && !valid(val[s.id], s.def)))
+    if (!checkEl) return
+    const was = checkEl.textContent
+    checkEl.textContent = text
+    if (text && text !== was) { checkEl.classList.remove('on'); void checkEl.offsetWidth; checkEl.classList.add('on') }
+    if ((D.checks || []).some((c) => c.when.custom)) ui.previewNote(usedSample ? 'This check used sample answers for 3.1 and 4.1, which were not played.' : '')
+  }
+
+  /* ------------------------------------------------ typing, steppers, chips, the opt-out */
+  function setValue(id, v, commit) {
+    const d = slotDef(id)
+    val[id] = v
+    if (v == null) delete val[id]
+    if (never) never = false
+    if (commit) {
+      const i = $(`[data-slot="${id}"]`)
+      if (v != null && d.typeStep) { v = Math.round(v / d.typeStep) * d.typeStep; val[id] = v }
+      i.value = v == null ? '' : fmt(v, d)
+      runChecks()
+    }
+    draw()
+  }
+  ui.obj.addEventListener('input', (e) => {
+    const i = e.target.closest('.sn-in'); if (!i) return
+    const d = slotDef(i.dataset.slot)
+    const t = clean(i.value, d)
+    if (t !== i.value) i.value = t
+    if (checkEl) checkEl.textContent = ''
+    $(`[data-box="${i.dataset.slot}"]`).classList.remove('bad')
+    setValue(i.dataset.slot, parse(t, d), false)
+  })
+  ui.obj.addEventListener('change', (e) => {
+    const i = e.target.closest('.sn-in'); if (!i) return
+    setValue(i.dataset.slot, parse(i.value, slotDef(i.dataset.slot)), true)
+  })
+  function stepBy(id, dir) {
+    const d = slotDef(id)
+    const s = d.step || 1
+    let v = val[id]
+    if (v == null || isNaN(v)) v = dir > 0 ? (d.min > 0 ? d.min : s) : d.min
+    else v = v + dir * s
+    v = Math.min(d.max, Math.max(d.min, Math.round(v * 1000) / 1000))
+    setValue(id, v, true)
+  }
+  ui.obj.addEventListener('keydown', (e) => {
+    const i = e.target.closest('.sn-in')
+    if (i) {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); stepBy(i.dataset.slot, e.key === 'ArrowUp' ? 1 : -1) }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        setValue(i.dataset.slot, parse(i.value, slotDef(i.dataset.slot)), true)
+        // the next empty box, else Next
+        const all = inputs(), k = all.indexOf(i)
+        const nx = all.slice(k + 1).concat(all.slice(0, k)).find((x) => !x.value)
+        if (nx) nx.focus()
+        else if (chipSlots.some((c) => !chip[c.id])) $(`[data-chip="${chipSlots.find((c) => !chip[c.id]).id}"]`).focus()
+        else ui.goNext()
+      }
+      return
+    }
+    const b = e.target.closest('.sn-chip')
+    if (b && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(e.key) >= 0) {
+      e.preventDefault()
+      const g = $$('.sn-chip', b.parentNode), k = g.indexOf(b)
+      const nx = g[(k + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + g.length) % g.length]
+      nx.focus(); chip[nx.dataset.chip] = nx.dataset.opt; never = false; runChecks(); draw()
+    }
+  })
+  ui.obj.addEventListener('click', (e) => {
+    const st = e.target.closest('.sn-st')
+    if (st) { stepBy(st.dataset.st, +st.dataset.d); return }
+    const b = e.target.closest('.sn-chip')
+    if (b) { chip[b.dataset.chip] = b.dataset.opt; never = false; runChecks(); draw(); return }
+    if (e.target.closest('#opt')) { never = !never; runChecks(); draw(); return }
+    // a tap anywhere on a box focuses its field
+    const box = e.target.closest('.sn-box')
+    if (box) { const i = $('.sn-in', box); if (i && document.activeElement !== i) i.focus() }
+  })
+  // steppers hold-to-repeat would fight with taps on a phone; one step per tap, as the ledger's steppers
+
+  /* ------------------------------------------------ fit: the sentence starts large and steps down until it fits */
+  function fit() {
+    let fs = narrow() ? 22 : 34
+    const min = rows.length > 1 ? 14 : narrow() ? 16 : 20
+    panel.classList.remove('tight')
+    panel.style.setProperty('--fs', fs + 'px')
+    const over = () => ui.obj.scrollHeight > ui.obj.clientHeight + 1
+    while (over() && fs > min) { fs -= 1; panel.style.setProperty('--fs', fs + 'px') }
+    if (over() && multi) panel.classList.add('tight')   // still too tall at the smallest type: the rows close up
+    keepStepsIn()
+  }
+  // The steppers sit centred under their box; when the box starts or ends a line (6.4a on a phone) that would push
+  // them past the sentence's edge, so slide them back inside it.
+  function keepStepsIn() {
+    $$('.sn-steps').forEach((g) => {
+      g.style.transform = ''
+      const row = g.closest('.sn-row'); if (!row) return
+      const btns = g.querySelectorAll('.sn-st'); if (!btns.length) return
+      const R = row.getBoundingClientRect()
+      const a = btns[0].getBoundingClientRect(), b = btns[btns.length - 1].getBoundingClientRect()
+      let dx = 0
+      if (a.left < R.left) dx = R.left - a.left
+      else if (b.right > R.right) dx = R.right - b.right
+      if (dx) g.style.transform = `translateX(${Math.round(dx)}px)`
+    })
+  }
+  draw()
+  runChecks()
+  fit()
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit)
+  window.addEventListener('resize', fit)
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-flow: the welcome, 0.1 (statement and ruler), the pause card and the ending.
+   Ported from mockups/index.html; page-only CSS, the shared frame is untouched. */
+.c-obj.pv-flat { padding: 0; }
+.enter { animation: scrIn 320ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes scrIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------------- welcome ---------------- */
+.wel { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 10px 80px 0; }
+.wel-mast { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wel-mast svg { display: block; }
+.wel-name { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 46px; line-height: 1; letter-spacing: 0.32em; padding-left: 0.32em; color: var(--ink); }
+.wel-line { margin: 14px auto 0; text-align: center; text-wrap: balance; font-family: var(--font-text); font-style: italic; font-size: 17px; line-height: 25px; color: var(--muted); max-width: 520px; }
+.wel-rule { width: 44px; height: 1px; background: var(--bronze); margin: 24px auto 26px; opacity: .7; }
+.wel-body p { margin: 0 0 14px; font-size: 17px; line-height: 27px; color: var(--ink-2); text-wrap: pretty; }
+.wel-body p:last-child { margin-bottom: 0; }
+.wel-body .best { font-family: var(--font-ui); font-size: 14px; line-height: 20px; color: var(--muted); margin-top: 18px; }
+
+/* the privacy panel inside the frame */
+.scrim { position: absolute; inset: 0; background: rgba(13,12,11,0.10); z-index: 20; opacity: 0; transition: opacity 200ms; }
+.scrim.on { opacity: 1; }
+.sheet {
+  position: absolute; z-index: 21; left: 0; right: 0; bottom: 0;
+  background: var(--ground); border-top: 1px solid var(--rule-soft);
+  box-shadow: 0 -14px 40px rgba(13,12,11,0.10);
+  padding: 26px 48px 26px;
+  transform: translateY(16px); opacity: 0; transition: transform 260ms cubic-bezier(.2,.7,.2,1), opacity 200ms;
+}
+.sheet.on { transform: none; opacity: 1; }
+.sheet-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.sheet-h h2 { margin: 0; font-family: var(--font-ui); font-weight: 600; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-2); }
+.sheet p { margin: 0; font-size: 17px; line-height: 26px; color: var(--ink-2); }
+
+/* ---------------- 0.1 the client ruler ---------------- */
+.ru-obj { justify-content: center; padding-bottom: 6px; }
+.ruler { position: relative; padding-top: 34px; margin: 0; }
+.rl-mark { position: absolute; top: 0; left: 27%; width: 42%; height: 34px; display: flex; flex-direction: column; align-items: center; }
+.rl-mark span { font-family: var(--font-ui); font-weight: 600; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--olive); line-height: 14px; white-space: nowrap; }
+.rl-mark i { display: block; width: 100%; height: 9px; margin-top: 6px; border: 1.5px solid var(--olive); border-bottom: 0; position: relative; }
+.rl-mark i::after { content: ""; position: absolute; left: 50%; top: -6px; width: 1.5px; height: 6px; background: var(--olive); transform: translateX(-50%); }
+.rl-bar { display: flex; height: 78px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); position: relative; }
+.rl-z { display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 10px; position: relative; }
+.rl-lo, .rl-hi {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(140,133,122,0.20) 6px 7px), var(--marble);
+  font-family: var(--font-ui); font-size: 13px; line-height: 17px; color: var(--muted);
+}
+.rl-lo { width: 27%; border-left: 1px solid var(--ink); }
+.rl-hi { width: 31%; }
+.rl-hi::after { /* the open end: the scale carries on */
+  content: ""; position: absolute; right: -1px; top: -1px; bottom: -1px; width: 10px;
+  background: linear-gradient(var(--paper), var(--paper)) right / 3px 100% no-repeat;
+  border-right: 1px dashed var(--ink);
+}
+.rl-hnw { width: 42%; background: var(--wheat-light); outline: 1.5px solid var(--ink); outline-offset: -0.75px; z-index: 1; }
+.rl-hnw b { font-family: var(--font-text); font-weight: 600; font-size: 21px; color: var(--ink); white-space: nowrap; }
+.rl-ticks { position: relative; height: 10px; background: repeating-linear-gradient(to right, var(--rule) 0 1px, transparent 1px 13px); background-size: 100% 6px; background-repeat: no-repeat; }
+.rl-ticks i { position: absolute; top: 0; width: 1px; height: 12px; background: var(--ink); }
+.rl-lab { position: relative; height: 26px; margin-top: 6px; }
+.rl-lab span { position: absolute; top: 0; font-family: var(--font-display); font-weight: 500; font-size: 18px; color: var(--ink); transform: translateX(-50%); white-space: nowrap; }
+.rl-lab span:first-child { transform: none; }
+.rl-lab span:last-child { transform: translateX(-100%); font-family: var(--font-ui); font-weight: 400; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); top: 4px; }
+
+/* ---------------- the pause card (a break card without a numeral, design §2.5) ---------------- */
+.pz { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 48px 40px; text-align: center; }
+.pz-line { margin: 22px auto 0; max-width: 520px; font-family: var(--font-text); font-size: 24px; line-height: 33px; color: var(--ink); text-wrap: balance; }
+
+/* ---------------- the ending ---------------- */
+.end { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 48px 24px; text-align: center; }
+.end-sheaf { width: 190px; height: 150px; }
+.end-sheaf svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.wreath { position: relative; width: 460px; height: 184px; margin-top: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 30px; }
+.wreath #wreathArt svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wr-h { margin: 0 0 12px; font-family: var(--font-ui); font-weight: 600; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--harvest); position: relative; }
+.wr-items { list-style: none; margin: 0; padding: 0; position: relative; }
+.wr-items span { white-space: nowrap; }
+.wr-items li { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 30px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.end-thanks { margin: 30px 0 0; font-family: var(--font-text); font-weight: 600; font-size: 30px; line-height: 37px; }
+.end-sent { margin: 8px 0 0; font-size: 18px; line-height: 26px; color: var(--ink-2); }
+.end-contact { margin: 18px 0 0; font-family: var(--font-ui); font-size: 14px; color: var(--muted); }
+.end-pv { margin: 0; text-align: left; }
+.pv-ending .pv-bar .pv-left { flex: 1 1 auto; min-width: 0; margin-right: 0; }
+.pv-ending .pv-bar { min-height: 48px; }
+
+/* ============ short laptops (1280x650 up to ~720 tall) ============ */
+@media (min-width: 701px) and (max-height: 720px) {
+  .wel { padding: 0 64px; }
+  .wel-mast { gap: 6px; }
+  .wel-mast svg { width: 11px; height: 33px; }
+  .wel-name { font-size: 36px; }
+  .wel-line { margin-top: 10px; font-size: 16px; line-height: 22px; }
+  .wel-rule { margin: 14px auto 16px; }
+  .wel-body p { font-size: 16px; line-height: 24px; margin-bottom: 10px; }
+  .wel-body .best { margin-top: 12px; }
+  .end-sheaf { width: 150px; height: 118px; }
+  .wreath { margin-top: 14px; }
+  .end-thanks { margin-top: 18px; }
+}
+
+/* =========================== phone =========================== */
+@media (max-width: 700px) {
+  .c-next-bar .c-link { flex: none; }
+  .wel { padding: 6px 22px 0; }
+  .wel-mast { gap: 6px; }
+  .wel-mast svg { width: 11px; height: 33px; }
+  .wel-name { font-size: 32px; }
+  .wel-line { font-size: 14.5px; line-height: 20px; margin-top: 9px; padding: 0 6px; }
+  .wel-rule { margin: 14px auto 14px; width: 32px; }
+  .wel-body p { font-size: 15px; line-height: 21.5px; margin-bottom: 10px; }
+  .wel-body .best { font-size: 13px; line-height: 18px; margin-top: 12px; }
+  .sheet { padding: 20px 20px 22px; }
+  .sheet p { font-size: 16px; line-height: 24px; }
+
+  .ruler { padding-top: 30px; }
+  .rl-mark span { font-size: 11px; letter-spacing: 0.1em; }
+  .rl-bar { height: 86px; }
+  .rl-z { padding: 0 5px; }
+  .rl-lo, .rl-hi { font-size: 12px; line-height: 15px; }
+  .rl-hnw b { font-size: 16px; }
+  .rl-lab span { font-size: 15px; }
+  .rl-lab span:last-child { font-size: 11px; }
+
+  .pz { padding: 4px 20px 30px; }
+  .pz-line { font-size: 20px; line-height: 28px; }
+
+  .end { padding: 0 20px 18px; }
+  .end-sheaf { width: 140px; height: 110px; }
+  .wreath { width: 330px; height: 172px; margin-top: 18px; }
+  .wr-items li { font-size: 15px; line-height: 26px; }
+  .end-thanks { font-size: 23px; line-height: 29px; margin-top: 22px; }
+  .end-sent { font-size: 16px; line-height: 23px; margin-top: 6px; }
+  .end-contact { font-size: 13px; line-height: 18px; margin-top: 14px; }
+  .end-pv { font-size: 12.5px; line-height: 16px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'flow') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const P = window.CeresPreview
+  const esc = P.esc, glue = P.glue
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const narrow = () => window.matchMedia('(max-width: 700px)').matches
+  const D = step.data
+  let relayout = null
+  window.addEventListener('resize', () => { if (relayout) relayout() })
+
+  /** Web Animations with a cut instead of motion (reduced motion). */
+  function anim(el, kf, o, then) {
+    if (!el || reduce) { if (then) then(); return null }
+    const a = el.animate(kf, Object.assign({ fill: 'backwards' }, o))
+    if (then) a.onfinish = then
+    return a
+  }
+
+  /* -------------------------------------------------------------- art (mockups/index.html) */
+  const earG = P.earG
+  function boundSheafSVG() {
+    const T = { x: 100, y: 110 }
+    let stalks = '', ears = ''
+    for (let i = 0; i < 10; i++) {
+      const deg = -32 + i * (64 / 9)
+      const a = deg * Math.PI / 180
+      const L = 94 - Math.abs(deg) * 0.6 + ((i * 7) % 3) * 3
+      const dx = Math.sin(a), dy = -Math.cos(a)
+      const lo = 36 / Math.cos(a)
+      const bx = T.x - dx * lo, by = T.y - dy * lo
+      const ex = T.x + dx * (L - 30), ey = T.y + dy * (L - 30)
+      stalks += `<line x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="#8A6116" stroke-width="1.1" vector-effect="non-scaling-stroke"/>`
+      ears += `<g transform="translate(${ex.toFixed(1)} ${ey.toFixed(1)}) rotate(${deg}) scale(1.08)">${earG('#D2A94E', '#8A6116', 0.8)}</g>`
+    }
+    const ribbon = `<g class="ribbon">
+      <path d="M100 110 C92 98 79 99 81 108 C83 116 94 114 100 110 Z" fill="#7A3E12"/>
+      <path d="M100 110 C108 98 121 99 119 108 C117 116 106 114 100 110 Z" fill="#7A3E12"/>
+      <path d="M97.5 111 C95 122 91 131 85 139 L89.5 140.5 C94 131 98 122 99.6 112 Z" fill="#7A3E12"/>
+      <path d="M102.5 111 C105 122 110 130 116 137 L111.6 139 C106.5 130 102 122 100.4 112 Z" fill="#7A3E12"/>
+      <path d="M84 107 Q100 112 116 107 L116 113 Q100 118 84 113 Z" fill="#7A3E12"/>
+      <path d="M86 109.6 Q100 114 114 109.6" fill="none" stroke="#C08A5A" stroke-width="0.7" opacity="0.8"/>
+      <ellipse cx="100" cy="110.5" rx="3.6" ry="3.2" fill="#5E2F0D"/>
+    </g>`
+    return `<svg viewBox="0 0 200 160" aria-hidden="true"><g class="stalks">${stalks}${ears}</g>${ribbon}</svg>`
+  }
+  function wreathSVG(W, H) {
+    const cx = W / 2
+    let out = ''
+    for (const s of [-1, 1]) {
+      const Pp = [[cx + s * 1.5, H - 4], [cx + s * (W / 2 - 8), H + 1], [cx + s * (W / 2 + 3), H * 0.40], [cx + s * (W / 2 - 26), 6]]
+      const B = (t) => { const u = 1 - t; return [0, 1].map((j) => u * u * u * Pp[0][j] + 3 * u * u * t * Pp[1][j] + 3 * u * t * t * Pp[2][j] + t * t * t * Pp[3][j]) }
+      const Dv = (t) => { const u = 1 - t; return [0, 1].map((j) => 3 * u * u * (Pp[1][j] - Pp[0][j]) + 6 * u * t * (Pp[2][j] - Pp[1][j]) + 3 * t * t * (Pp[3][j] - Pp[2][j])) }
+      out += `<path d="M${Pp[0]} C${Pp[1]} ${Pp[2]} ${Pp[3]}" fill="none" stroke="#8A6116" stroke-width="0.9"/>`
+      const n = 8
+      for (let k = 0; k < n; k++) {
+        const t = 0.24 + k * (0.7 / (n - 1))
+        const [x, y] = B(t), [tx, ty] = Dv(t)
+        const ang = Math.atan2(tx, -ty) * 180 / Math.PI
+        const splay = s * (k % 2 ? 16 : 44)
+        out += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(ang + splay).toFixed(1)}) scale(0.6)">${earG('#E6CF9A', '#8A6116', 0.8)}</g>`
+      }
+      const [x, y] = B(1), [tx, ty] = Dv(1)
+      out += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(Math.atan2(tx, -ty) * 180 / Math.PI).toFixed(1)}) scale(0.6)">${earG('#E6CF9A', '#8A6116', 0.8)}</g>`
+    }
+    out += `<path d="M${cx + 1.5} ${H - 4} L${cx - 9} ${H + 3} M${cx - 1.5} ${H - 4} L${cx + 9} ${H + 3}" stroke="#8A6116" stroke-width="0.9" fill="none"/>`
+    out += `<path d="M${cx} ${H - 7.5} L${cx} ${H - 0.5}" stroke="#7A3E12" stroke-width="2.6" stroke-linecap="round"/>`
+    return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${out}</svg>`
+  }
+
+  /* -------------------------------------------------------------- welcome */
+  function welcome() {
+    const ui = P.mount(step, { band: false, objClass: 'pv-flat' })
+    ui.obj.innerHTML = `
+      <div class="wel enter">
+        <div class="wel-mast">${P.earSVG(14, 42)}<h1 class="wel-name">${esc(D.wordmark)}</h1></div>
+        <p class="wel-line">${glue(D.nameLine)}</p>
+        <div class="wel-rule"></div>
+        <div class="wel-body">
+          ${D.body.map((p) => `<p>${glue(p)}</p>`).join('')}
+          ${D.best ? `<p class="best">${glue(D.best)}</p>` : ''}
+        </div>
+      </div>`
+    const pv = document.createElement('button')
+    pv.className = 'c-link'; pv.type = 'button'; pv.textContent = D.privacy.link; pv.setAttribute('aria-haspopup', 'dialog')
+    ui.left.appendChild(pv); ui.bar.classList.add('link')
+    pv.onclick = () => openPrivacy(ui)
+  }
+  function openPrivacy(ui) {
+    const frame = ui.frame
+    const scrim = document.createElement('div'); scrim.className = 'scrim'
+    const sh = document.createElement('div'); sh.className = 'sheet'
+    sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-modal', 'true'); sh.setAttribute('aria-label', D.privacy.title)
+    sh.innerHTML = `<div class="sheet-h"><h2>${esc(D.privacy.title)}</h2><button class="c-link" type="button" data-close>${esc(D.privacy.close)}</button></div><p>${esc(D.privacy.text)}</p>`
+    frame.append(scrim, sh)
+    const opener = document.activeElement
+    requestAnimationFrame(() => { scrim.classList.add('on'); sh.classList.add('on') })
+    const close = () => {
+      document.removeEventListener('keydown', onKey, true)
+      scrim.classList.remove('on'); sh.classList.remove('on')
+      setTimeout(() => { scrim.remove(); sh.remove() }, reduce ? 0 : 260)
+      if (opener && opener.focus) opener.focus({ preventScroll: true })
+    }
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close() } }
+    document.addEventListener('keydown', onKey, true)
+    scrim.onclick = close
+    $('[data-close]', sh).onclick = close
+    $('[data-close]', sh).focus({ preventScroll: true })
+  }
+
+  /* -------------------------------------------------------------- 0.1 the client ruler */
+  function statement() {
+    const ui = P.mount(step, { objClass: 'ru-obj' })
+    const R = D.ruler
+    ui.obj.innerHTML = `
+      <figure class="ruler" id="ruler" aria-label="${esc(R.aria)}">
+        <div class="rl-mark" id="rlMark"><span>${esc(R.marker)}</span><i></i></div>
+        <div class="rl-bar">
+          <div class="rl-z rl-lo"><span>${esc(R.zones.lo)}</span></div>
+          <div class="rl-z rl-hnw" id="rlHnw"><b>${esc(R.zones.hnw)}</b></div>
+          <div class="rl-z rl-hi"><span>${esc(R.zones.hi)}</span></div>
+        </div>
+        <div class="rl-ticks" id="rlTicks"><i style="left:0"></i><i style="left:27%"></i><i style="left:69%"></i></div>
+        <div class="rl-lab"><span style="left:0">${esc(R.ticks[0])}</span><span style="left:27%">${esc(R.ticks[1])}</span><span style="left:69%">${esc(R.ticks[2])}</span><span style="left:100%">${esc(R.ticks[3])}</span></div>
+      </figure>`
+    anim($('#rlTicks'), [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: 400, delay: 120, easing: 'ease-out' })
+    anim($('#rlHnw'), [{ backgroundColor: 'rgba(230,207,154,0)' }, { backgroundColor: 'rgba(230,207,154,1)' }], { duration: 360, delay: 300, easing: 'ease-out' })
+    anim($('#rlMark'), [{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }], { duration: 280, delay: 560, easing: 'cubic-bezier(.2,.7,.2,1)' })
+  }
+
+  /* -------------------------------------------------------------- the pause card */
+  function pause() {
+    const ui = P.mount(step, { band: false, objClass: 'pv-flat', later: true })
+    ui.obj.innerHTML = `
+      <div class="pz enter" id="pz">
+        ${P.earSVG(16, 48)}
+        <h1 class="pz-line">${glue(D.line)}</h1>
+      </div>`
+  }
+
+  /* -------------------------------------------------------------- the ending */
+  function ending() {
+    const ui = P.mount(step, { band: false, objClass: 'pv-flat', next: false, hideSheaf: true })
+    // the respondent's own top three from 9.1 (the reviewer's, if they ranked it; else a sample)
+    const src = CeresNav.step(D.top3From)
+    const byId = {}; src.data.blocks.forEach((b) => { byId[b.id] = b.label })
+    const got = CeresNav.answers.get(D.top3From)
+    const own = Array.isArray(got) && got.filter((id) => byId[id]).length >= 3
+    const top = (own ? got : D.sampleTop3).filter((id) => byId[id]).slice(0, 3).map((id) => byId[id])
+    ui.obj.innerHTML = `
+      <div class="end" id="end">
+        <div class="end-sheaf" id="sheaf">${boundSheafSVG()}</div>
+        <div class="wreath" id="wreath"><span id="wreathArt"></span>
+          <p class="wr-h">${esc(D.wreathLabel)}</p>
+          <ol class="wr-items">${top.map((t) => `<li><span>${esc(t)}</span></li>`).join('')}</ol>
+        </div>
+        <h1 class="end-thanks" id="thanks">${esc(D.thanks)}</h1>
+        <p class="end-sent" id="sent">${esc(D.sent)}</p>
+        <p class="end-contact" id="contact">${esc(D.contact)}</p>
+      </div>`
+    const note = document.createElement('p'); note.className = 'pv-note end-pv'
+    note.textContent = own ? 'The three under the wreath are your top three from 9.1. The survey has no Next here.'
+      : 'The three under the wreath are a sample; rank 9.1 to see your own. The survey has no Next here.'
+    ui.left.appendChild(note)
+    relayout = () => {
+      const wr = $('#wreath'); if (!wr) return
+      const spans = $$('.wr-items span', wr)
+      const avail = $('#end').clientWidth - (narrow() ? 40 : 96)
+      const widest = () => Math.max(...spans.map((x) => x.offsetWidth))
+      let fs = narrow() ? 15 : 18
+      const setFs = () => $$('.wr-items li', wr).forEach((li) => { li.style.fontSize = fs + 'px' })
+      setFs()
+      while (widest() + 110 > avail && fs > 11) { fs -= 0.5; setFs() }
+      const W = Math.round(Math.min(avail, Math.max(widest() + 110, narrow() ? 300 : 440)))
+      const H = narrow() ? 172 : (window.innerHeight <= 720 ? 172 : 184)
+      wr.style.width = W + 'px'; wr.style.height = H + 'px'
+      $('#wreathArt').innerHTML = wreathSVG(W, H)
+    }
+    relayout()
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => relayout())
+    const sheaf = $('#sheaf')
+    anim(sheaf, [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 400 })
+    const rib = $('.ribbon', sheaf)
+    rib.style.transformBox = 'view-box'; rib.style.transformOrigin = '100px 110px'
+    anim(rib, [{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.08)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], { duration: 360, delay: 420, easing: 'cubic-bezier(.2,.7,.2,1)' })
+    ;[['#wreath', 700], ['#thanks', 880], ['#sent', 960], ['#contact', 1040]]
+      .forEach(([s, d]) => anim($(s), [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 320, delay: d, easing: 'ease-out' }))
+  }
+
+  const draw = { welcome, statement, pause, ending }[D.variant]
+  if (draw) draw()
+  else P.mount(step, {})
+})()
+</script>
+</body>
+</html>

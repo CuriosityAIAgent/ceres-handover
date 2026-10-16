@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-ladder: 3.1, the share-of-wallet column, three internal steps on one screen.
+   Ported from mockups/wallet.html (page-only CSS; the shared frame is untouched). The mockup's hover line `.pv` is
+   renamed `.hov` here, because the preview puts the class `pv` on <body>. */
+:root {
+  --gh: 300px;   /* glass height */
+  --gw: 94px;    /* glass width */
+  --lw: 44px;    /* % scale lane */
+  --rw: 52px;    /* $ scale lane */
+  --lab: 12px;   /* tick label line */
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --hatch-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='5'%3E%3Cpath d='M-1 1l2-2M0 5l5-5M4 6l2-2' stroke='%23E6CF9A' stroke-opacity='.5' stroke-width='.7'/%3E%3C/svg%3E");
+  --hatch-wheat: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='5'%3E%3Cpath d='M-1 1l2-2M0 5l5-5M4 6l2-2' stroke='%238A6116' stroke-opacity='.42' stroke-width='.7'/%3E%3C/svg%3E");
+  --hatch-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M-1 5l2 2M0 0l6 6M5 -1l2 2' stroke='%238A6116' stroke-opacity='.32' stroke-width='.7'/%3E%3C/svg%3E");
+}
+
+/* frame: stage width (the preview sets the height) */
+.c-frame.stage { width: 1120px; }
+.c-frame.stage .c-body { grid-template-columns: 320px 1fr; }
+.c-frame.stage .c-side { padding: 34px 24px 0 36px; }
+.c-frame.stage .c-side .c-q { font-size: 22px; line-height: 29px; text-wrap: pretty; }
+.c-frame.stage .c-side .c-bridge { font-size: 17.5px; line-height: 23px; }
+.c-frame.stage .c-side .c-bridge::before { margin-top: 10px; }
+.c-frame.stage .c-stage { padding: 0 36px 0 34px; justify-content: center; }
+.c-side .c-i { margin-top: 14px; }
+.c-side .c-note.ctx { margin-top: 10px; }
+.band { transition: opacity 170ms ease, transform 170ms ease; }
+.band.out { opacity: 0; transform: translateY(5px); }
+.band.in { animation: band-in 300ms var(--ease) both; }
+@keyframes band-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* object */
+.w-obj { display: flex; align-items: center; gap: 26px; min-height: 0; }
+
+/* ----- the column ----- */
+.colwrap {
+  position: relative; flex: none;
+  width: calc(var(--lw) + var(--gw) + var(--rw));
+  height: calc(var(--gh) + 50px);
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.colwrap.live { cursor: pointer; }
+.colwrap.live.dragging { cursor: ns-resize; }
+.glass {
+  position: absolute; left: var(--lw); top: 26px; width: var(--gw); height: var(--gh);
+  background: rgba(255,255,255,0.62);
+  outline: none;
+}
+.glass::after {
+  content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none;
+  border: 1.25px solid var(--ink); border-top: 0; border-radius: 0 0 2px 2px;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35);
+}
+.glass::before {
+  content: ""; position: absolute; z-index: 9; left: -6px; right: -6px; top: -5px; height: 5px;
+  border: 1.25px solid var(--ink); border-radius: 2px; background: var(--paper);
+}
+.glass:focus-visible::after { box-shadow: 0 0 0 3px rgba(20,35,59,0.25); }
+.plinth {
+  position: absolute; top: calc(26px + var(--gh)); left: calc(var(--lw) - 12px); width: calc(var(--gw) + 24px); height: 9px;
+  border: 1.25px solid var(--ink); border-radius: 2px; background: var(--marble);
+}
+.plinth::after { content: ""; position: absolute; left: -8px; right: -8px; bottom: -5px; height: 0; border-top: 1px solid var(--rule); }
+.shine { position: absolute; top: 10px; bottom: 10px; left: 9px; width: 1.5px; background: rgba(255,255,255,0.9); pointer-events: none; }
+.shine.b { left: 14px; width: 1px; top: 22px; bottom: 40%; background: rgba(255,255,255,0.6); }
+
+.marks i { position: absolute; z-index: 2; height: 1px; background: var(--ink); opacity: .55; pointer-events: none; }
+.marks i.l { left: 0; } .marks i.r { right: 0; }
+.marks i.maj { width: 11px; } .marks i.min { width: 5px; opacity: .4; }
+
+.scale { position: absolute; top: 26px; height: var(--gh); pointer-events: none; }
+.scale.l { left: 0; width: calc(var(--lw) - 8px); }
+.scale.r { left: calc(var(--lw) + var(--gw) + 8px); width: calc(var(--rw) - 8px); }
+.scale span {
+  position: absolute; font-family: var(--font-ui); font-size: 11px; line-height: 12px; color: var(--muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap; transform: translateY(50%);
+}
+.scale.l span { right: 0; }
+.scale.r span { left: 0; color: var(--harvest); }
+.scale span.z { color: var(--rule); transform: translateY(-1px); }
+
+.fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; transition: height 340ms var(--ease), bottom 340ms var(--ease), opacity 200ms; }
+.fill.base { background: var(--harvest) var(--hatch-gold); box-shadow: inset 0 1.5px 0 #5C410E; }
+.fill.four { background: var(--wheat) var(--hatch-wheat); box-shadow: inset 0 1.5px 0 var(--harvest); }
+.fill.hide { opacity: 0; }
+.dragging .fill, .dragging .edge { transition: none; }
+.today {
+  position: absolute; left: 7px; top: 10px; z-index: 6;
+  font-family: var(--font-ui); font-size: 10px; line-height: 15px; letter-spacing: .08em; text-transform: uppercase;
+  color: #FBF4E4; padding: 0 5px; background: rgba(92,65,14,0.88); border-radius: 2px; white-space: nowrap;
+  transition: opacity 200ms;
+}
+.today.above { top: auto; bottom: calc(100% + 4px); background: var(--harvest); }
+
+.ghost {
+  position: absolute; left: 0; right: 0; height: 0; z-index: 3; pointer-events: none;
+  background: rgba(230,207,154,0.45) var(--hatch-ghost);
+  box-shadow: inset 0 1.5px 0 var(--harvest);
+  opacity: 0; transition: height 360ms var(--ease), opacity 260ms ease;
+}
+.ghost.on { opacity: 1; }
+.ghost.instant { transition: none; }
+.gtab {
+  position: absolute; z-index: 6; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-ui); font-size: 11px; line-height: 17px; font-weight: 500; white-space: nowrap;
+  color: var(--paper); background: var(--ink); padding: 0 7px; border-radius: 2px;
+  box-shadow: 0 2px 6px rgba(13,12,11,0.18);
+  transition: opacity 200ms, bottom 360ms var(--ease);
+}
+.gtab::after { content: ""; position: absolute; left: 50%; bottom: -3px; margin-left: -3px; border: 3px solid transparent; border-bottom: 0; border-top-color: var(--ink); }
+
+.tk { position: absolute; left: 0; right: 0; height: 0; z-index: 4; border-top: 1px solid var(--ink); pointer-events: none; }
+.tk[hidden], .tl[hidden] { display: none; }
+.tk.fresh, .tl.fresh { animation: tk-in 260ms ease both; }
+.tk.glow { border-top-color: var(--harvest); border-top-width: 1.5px; }
+@keyframes tk-in { from { opacity: 0; } to { opacity: 1; } }
+.tl {
+  position: absolute; z-index: 5; pointer-events: none; width: 15px; height: 15px; margin-bottom: -7.5px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-variation-settings: 'opsz' 14; font-weight: 500; font-size: 11.5px; line-height: 1; color: var(--bronze);
+  background: var(--paper); border: 1px solid var(--bronze); border-radius: 50%; white-space: nowrap;
+}
+.tl.glow { background: #FBF4E4; border-color: var(--harvest); color: var(--harvest); }
+.tl.many { width: auto; padding: 0 4px; border-radius: 8px; letter-spacing: .06em; }
+.tl.hid { visibility: hidden; }
+
+.edge { position: absolute; left: 0; right: 0; height: 0; z-index: 8; transition: bottom 340ms var(--ease); display: none; }
+.edge.on { display: block; }
+.grip {
+  position: absolute; left: 50%; top: -7px; margin-left: -17px; width: 34px; height: 14px;
+  background: var(--paper); border: 1.25px solid var(--ink); border-radius: 2px; cursor: ns-resize;
+  box-shadow: 0 1px 3px rgba(13,12,11,0.18);
+}
+.grip::before, .grip::after { content: ""; position: absolute; left: 8px; right: 8px; height: 0; border-top: 1px solid var(--ink); }
+.grip::before { top: 3.5px; } .grip::after { top: 7.5px; }
+.edge.side .grip { left: 8px; margin-left: 0; }
+
+/* hover line (the mockup's `.pv`) */
+.hov { position: absolute; left: 0; right: 0; height: 0; z-index: 6; border-top: 1px dashed rgba(13,12,11,0.55); pointer-events: none; display: none; }
+.hov.on { display: block; }
+.hov span {
+  position: absolute; right: calc(100% + 4px); top: -9px; font-family: var(--font-ui); font-size: 11px; line-height: 17px;
+  color: var(--paper); background: var(--navy); padding: 0 5px; border-radius: 2px; white-space: nowrap;
+}
+
+/* ----- the panel beside the column ----- */
+.panel { flex: 1; min-width: 0; position: relative; }
+.pane { display: none; }
+.pane.on { display: block; animation: pane-in 320ms var(--ease) both; }
+@keyframes pane-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+
+.box {
+  display: inline-flex; align-items: center; gap: 4px; background: #fff;
+  border: 1px solid var(--rule); border-radius: 2px; padding: 0 8px 0 4px; height: 38px;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.box:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(20,35,59,0.12); }
+.box input {
+  font-variation-settings: 'opsz' 10;
+  width: 1.8em; border: 0; outline: none; background: transparent; text-align: right; padding: 0;
+  font-family: var(--font-display); font-weight: 500; font-size: 21px; color: var(--ink);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.box i { font-style: normal; font-family: var(--font-ui); font-size: 14px; color: var(--muted); }
+.box.err { border-color: var(--amber); }
+.box.big { height: 56px; padding: 0 14px 0 10px; }
+.box.big input { font-size: 32px; width: 2.2em; }
+.box.big i { font-size: 17px; }
+
+.readout { font-family: var(--font-text); font-size: 19px; line-height: 1; color: var(--muted); margin: 0; min-height: 60px; display: flex; align-items: baseline; gap: 0; white-space: nowrap; }
+.readout .n { font-variation-settings: 'opsz' 14; font-family: var(--font-display); font-weight: 500; font-size: 60px; line-height: 60px; color: var(--ink); letter-spacing: -0.01em; font-variant-numeric: lining-nums; }
+.readout .s { margin-left: 10px; }
+.readout.pop .n { animation: pop 260ms var(--ease); }
+@keyframes pop { 0% { transform: translateY(4px); opacity: .4; } 100% { transform: none; opacity: 1; } }
+.readout.blank { visibility: hidden; }
+.p1 .box { margin-top: 18px; }
+.err-line { font-family: var(--font-ui); font-size: 13px; line-height: 18px; color: var(--amber); margin: 8px 0 0; min-height: 18px; }
+
+/* rows (steps 2 and 3) */
+.rows { margin: 0 -12px; }
+.row {
+  display: grid; grid-template-columns: 22px 1fr auto; grid-template-areas: "n l c" "n h h";
+  column-gap: 8px; align-items: center; padding: 9px 10px 9px 12px; border-top: 1px solid var(--rule-soft);
+  border-radius: 2px; transition: background 220ms, box-shadow 220ms, opacity 300ms;
+}
+.row:last-child { border-bottom: 1px solid var(--rule-soft); }
+.row .rn { grid-area: n; align-self: start; padding-top: 3px; font-family: var(--font-display); font-size: 16px; color: var(--bronze); }
+.row .rl { grid-area: l; font-family: var(--font-text); font-weight: 600; font-size: 15.5px; line-height: 21px; color: var(--ink); }
+.row .rh { grid-area: h; font-family: var(--font-ui); font-size: 12.5px; line-height: 17px; color: var(--muted); margin-top: 2px; }
+.row .rh.err { color: var(--amber); }
+.row .rc { grid-area: c; display: flex; align-items: center; gap: 4px; }
+.row .rv { grid-area: c; display: none; font-variation-settings: 'opsz' 10; font-family: var(--font-display); font-weight: 500; font-size: 18px; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; }
+.row .rv small { font-family: var(--font-ui); font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.row.active { background: rgba(239,235,228,0.85); box-shadow: inset 2px 0 0 var(--navy); }
+.st {
+  width: 30px; height: 38px; border: 1px solid var(--rule-soft); background: #fff; border-radius: 2px;
+  font-family: var(--font-ui); font-size: 18px; line-height: 1; color: var(--ink); cursor: pointer; padding: 0;
+  transition: border-color 150ms, background 150ms;
+}
+.st:hover:not([disabled]) { border-color: var(--rule); }
+.st:active:not([disabled]) { background: var(--marble); }
+.st[disabled] { color: var(--rule-soft); cursor: default; }
+.st:focus-visible, .chip:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
+.chip {
+  margin-left: 6px; height: 32px; width: 84px; padding: 0 4px; text-align: center; border: 1px solid var(--rule-soft); background: transparent; border-radius: 2px;
+  font-family: var(--font-ui); font-size: 12.5px; color: var(--muted); cursor: pointer; white-space: nowrap;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+.chip:hover { border-color: var(--rule); }
+.chip[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: var(--paper); }
+.chip[aria-pressed="true"]::before { content: "✓ "; }
+
+.hintslot { display: none; }
+
+/* step 3: rows become a quiet summary, Adam's four glow */
+.rows.sum .row { padding-top: 7px; padding-bottom: 7px; }
+.rows.sum .rc, .rows.sum .rh { display: none; }
+.rows.sum .rv { display: block; }
+.rows.sum .row.glow { background: rgba(230,207,154,0.42); box-shadow: inset 2px 0 0 var(--harvest); }
+.rows.sum .row.dim { opacity: .36; }
+.rows.sum .row.glow { animation: glow-in 500ms ease both; }
+@keyframes glow-in { from { background: rgba(230,207,154,0); } to { background: rgba(230,207,154,0.42); } }
+
+.together { margin-top: 18px; display: none; }
+.together.on { display: block; animation: pane-in 320ms var(--ease) both; }
+.tg-row { display: flex; align-items: center; gap: 14px; }
+.tg-l { font-family: var(--font-ui); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+.tg-row .box { margin-left: auto; }
+.together .readout { min-height: 0; font-size: 15px; margin-top: 10px; justify-content: flex-end; }
+.together .readout .n { font-size: 30px; line-height: 30px; }
+.together .readout .s { margin-left: 8px; }
+.check { font-family: var(--font-ui); font-size: 13.5px; line-height: 18px; color: var(--muted); margin: 10px 0 0; min-height: 18px; text-align: right; }
+.check span { animation: tk-in 300ms ease both; }
+.check .bad { color: var(--amber); }
+
+/* ===== short laptop (1280x650): the column shortens so the five rows and the band fit ===== */
+@media (min-width: 701px) and (max-height: 720px) {
+  :root { --gh: 270px; }
+  .c-frame.stage .c-side { padding-top: 24px; }
+  .row { padding-top: 7px; padding-bottom: 7px; }
+  .rows.sum .row { padding-top: 5px; padding-bottom: 5px; }
+}
+
+/* ===== phone (390x660) ===== */
+@media (max-width: 700px) {
+  :root { --gh: 190px; --gw: 58px; --lw: 31px; --rw: 37px; --lab: 11px; }
+  .c-frame.stage .c-side { padding: 12px 20px 0; }
+  .c-frame.stage .c-side .c-q { font-size: 19px; line-height: 24px; }
+  .c-frame.stage .c-stage { padding: 12px 20px 0; justify-content: flex-start; }
+  .c-bridge { font-size: 15px; line-height: 20px; margin-bottom: 4px; }
+  .c-bridge::before { margin-top: 9px; width: 12px; }
+  .c-frame.stage .c-side .c-bridge { font-size: 15px; line-height: 20px; }
+  .c-frame.stage .c-side .c-bridge::before { margin-top: 9px; }
+  .c-side .c-i { margin-top: 7px; font-size: 14px; line-height: 19px; }
+  .c-side .c-note.ctx { margin-top: 4px; }
+  .c-note { font-size: 12.5px; line-height: 16px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .w-obj { gap: 12px; align-items: center; }
+  .colwrap { height: calc(var(--gh) + 44px); }
+  .glass { top: 22px; }
+  .scale, .plinth { top: 22px; }
+  .plinth { top: calc(22px + var(--gh)); left: calc(var(--lw) - 7px); width: calc(var(--gw) + 14px); height: 7px; }
+  .plinth::after { left: -5px; right: -5px; bottom: -4px; }
+  .scale.l { width: calc(var(--lw) - 5px); }
+  .scale.r { left: calc(var(--lw) + var(--gw) + 5px); width: calc(var(--rw) - 5px); }
+  .scale span { font-size: 10.5px; line-height: 12px; }
+  .shine { left: 6px; top: 8px; bottom: 8px; } .shine.b { left: 10px; }
+  .marks i.maj { width: 8px; } .marks i.min { width: 4px; }
+  .today { left: 3px; top: 8px; font-size: 10px; line-height: 14px; padding: 0 3px; letter-spacing: 0; text-transform: none; }
+  .gtab { font-size: 10.5px; line-height: 16px; padding: 0 4px; }
+  .tl { width: 13px; height: 13px; margin-bottom: -6.5px; font-size: 10px; }
+  .glass::before { left: -4px; right: -4px; }
+  .grip { width: 26px; margin-left: -13px; height: 13px; top: -6.5px; }
+  .grip::before, .grip::after { left: 6px; right: 6px; }
+  .edge.side .grip { left: 4px; }
+  .hov span { font-size: 10px; }
+
+  .readout { font-size: 14px; min-height: 0; flex-direction: column; align-items: flex-start; }
+  .readout .n { font-size: 44px; line-height: 46px; }
+  .readout .s { margin-left: 0; margin-top: 2px; }
+  .readout .s .dot { display: none; }
+  .p1 .box { margin-top: 14px; }
+  .box.big { height: 50px; }
+  .box.big input { font-size: 28px; }
+  .err-line { font-size: 12px; }
+
+  .rows { margin: 0 -6px 0 0; }
+  .row { grid-template-columns: 1fr; grid-template-areas: "l" "c" "h"; padding: 3px 6px 4px; column-gap: 0; }
+  .row .rn { display: none; }
+  .row .rl { font-family: var(--font-ui); font-weight: 500; font-size: 13px; line-height: 15px; margin-bottom: 3px; }
+  .row .rl b { font-family: var(--font-display); color: var(--bronze); font-weight: 500; margin-right: 4px; }
+  .row .rh, .row.active .rh, .row .rh.err { display: none; }
+  /* the active row's hint sits in one fixed slot under the rows, so tapping a row never shifts the layout */
+  .hintslot { display: block; height: 30px; margin: 5px 0 0; font-family: var(--font-ui); font-size: 12px; line-height: 15px; color: var(--muted); }
+  .hintslot b { font-family: var(--font-display); font-weight: 500; color: var(--bronze); margin-right: 3px; font-size: 12.5px; }
+  .hintslot.err { color: var(--amber); }
+  .rows.sum + .hintslot { display: none; }
+  .row .rc { gap: 3px; }
+  .st { width: 30px; height: 30px; font-size: 16px; }
+  .box { height: 30px; padding: 0 7px 0 4px; }
+  .box input { font-size: 17px; width: 1.75em; }
+  .box i { font-size: 12px; }
+  .chip { height: 30px; width: 74px; padding: 0 2px; font-size: 11.5px; margin-left: 4px; }
+  .rows.sum .row { grid-template-columns: 1fr auto; grid-template-areas: "l c"; padding: 6px 6px; }
+  .rows.sum .row .rl { margin-bottom: 0; }
+  .rows.sum .rv { font-size: 15px; }
+  .together { margin-top: 12px; }
+  .tg-row { flex-wrap: nowrap; gap: 8px; }
+  .tg-l { font-size: 10.5px; letter-spacing: .08em; }
+  .tg-row .box { height: 40px; }
+  .tg-row .box input { font-size: 21px; }
+  .together .readout { flex-direction: row; align-items: baseline; margin-top: 6px; font-size: 12.5px; }
+  .together .readout .n { font-size: 22px; line-height: 24px; }
+  .together .readout .s { margin-left: 6px; }
+  .check { font-size: 12px; line-height: 16px; margin-top: 6px; text-align: left; }
+  /* preview only: the stand-in note takes a line, so the rows give it back */
+  body.pv-standin .row { padding-top: 1px; padding-bottom: 2px; }
+  body.pv-standin .hintslot { margin-top: 3px; }
+}
+/* desk: the row numeral lives in its own column, so the label's inline copy is hidden */
+@media (min-width: 701px) { .row .rl b { display: none; } }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'ladder') { CeresNav.go(step.id); return }   // wrong page for this id: send it to its own
+  const P = window.CeresPreview
+  const ui = P.mount(step, { stage: true })
+  const D = step.data
+  const U = D.ui
+  const esc = ui.esc, fill = CeresNav.fill
+  const $ = (s) => document.querySelector(s)
+  const ROWS = D.rows
+  const SAMPLE_BASE = D.sample.base
+  const SNAP = D.snap || 5, ROWSTEP = D.rowStep || 5
+
+  /* ---------- the object (mockups/wallet.html) ---------- */
+  ui.obj.innerHTML = `
+    <div class="w-obj">
+      <div class="colwrap" id="colwrap">
+        <div class="scale l" id="scaleL" aria-hidden="true"></div>
+        <div class="glass" id="glass" role="slider" aria-label="Share of a $10mm client's money held with us" aria-valuemin="0" aria-valuemax="100" tabindex="0">
+          <div class="shine"></div><div class="shine b"></div>
+          <div class="marks" id="marks" aria-hidden="true"></div>
+          <div class="fill base" id="fillBase"><span class="today" id="today"></span></div>
+          <div class="fill four" id="fillFour"></div>
+          <div class="ghost" id="ghost"></div>
+          <div id="ticks" aria-hidden="true"></div>
+          <span class="gtab" id="gtab" style="opacity:0"></span>
+          <div class="hov" id="hov"><span></span></div>
+          <div class="edge" id="edge"><span class="grip"></span></div>
+        </div>
+        <div class="scale r" id="scaleR" aria-hidden="true"></div>
+        <div class="plinth" aria-hidden="true"></div>
+      </div>
+      <div class="panel" id="panel">
+        <div class="pane p1" id="p1">
+          <p class="readout blank" id="ro1" aria-live="polite"></p>
+          <label class="box big" id="box1"><input id="in1" inputmode="numeric" autocomplete="off" maxlength="3" aria-label="Share with today's offer, in percent"><i>%</i></label>
+          <p class="err-line" id="err1"></p>
+        </div>
+        <div class="pane" id="p2">
+          <div class="rows" id="rows"></div>
+          <p class="hintslot" id="hintslot" aria-live="polite"></p>
+          <div class="together" id="together">
+            <div class="tg-row">
+              <span class="tg-l" id="tgl">${esc(U.step3Label)}</span>
+              <label class="box" id="box4"><input id="in4" inputmode="numeric" autocomplete="off" maxlength="3" aria-label="${esc(U.step3Label)}, share in percent"><i>%</i></label>
+            </div>
+            <p class="readout" id="ro4" aria-live="polite"></p>
+            <p class="check" id="check" aria-live="polite"></p>
+          </div>
+        </div>
+      </div>
+    </div>`
+
+  const reduce = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const narrow = () => window.matchMedia('(max-width: 700px)').matches
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+  const mm = (v) => (v / 10).toFixed(1)
+  // the readout line, '{p}% · ${m}mm of $10mm': the big numeral, then the dollar echo
+  const RO = U.readout.split(' · ')
+  const roText = (v) => fill(U.readout, { p: v, m: mm(v) })
+  const roHTML = (v, dotHidden) => `<span class="n">${esc(fill(RO[0], { p: v }))}</span> <span class="s">${dotHidden ? '<span class="dot">· </span>' : '· '}${esc(fill(RO.slice(1).join(' · '), { p: v, m: mm(v) }))}</span>`
+
+  const fresh = () => ({ step: 1, base: null, rows: {}, nc: {}, four: null, active: null, raw: {}, err: {} })
+  let S = fresh()
+
+  // the reviewer's own answer, if any
+  const saved = ui.load()
+  if (saved && typeof saved === 'object') {
+    if (typeof saved.base === 'number') S.base = saved.base
+    for (const r of ROWS) if (typeof saved[r.id] === 'number') S.rows[r.id] = saved[r.id]
+    if (typeof saved.four === 'number') S.four = saved.four
+    for (const r of ROWS) S.nc[r.id] = S.base != null && S.rows[r.id] === S.base
+  }
+  /** Today's share as the later steps see it: the reviewer's, else the sample (preview only: Next always works). */
+  const B = () => (S.step === 1 ? S.base : (S.base != null ? S.base : SAMPLE_BASE))
+  const standIn = () => S.step >= 2 && S.base == null
+
+  /* ---------- static build ---------- */
+  const marks = $('#marks'), sl = $('#scaleL'), sr = $('#scaleR')
+  for (let v = 0; v <= 100; v += 5) {
+    if (v > 0 && v < 100) for (const side of ['l', 'r']) {
+      const m = document.createElement('i'); m.className = side + ' ' + (v % 10 ? 'min' : 'maj'); m.style.bottom = v + '%'; marks.appendChild(m)
+    }
+    if (v % 10) continue
+    const a = document.createElement('span'); a.textContent = v + '%'; a.style.bottom = v + '%'; if (!v) a.className = 'z'; sl.appendChild(a)
+    const b = document.createElement('span'); b.textContent = v ? '$' + v / 10 + 'mm' : '$0'; b.style.bottom = v + '%'; if (!v) b.className = 'z'; sr.appendChild(b)
+  }
+
+  const rowsEl = $('#rows')
+  const R = {}
+  ROWS.forEach((r, i) => {
+    const el = document.createElement('div')
+    el.className = 'row'; el.dataset.row = r.id
+    el.innerHTML =
+      `<span class="rn" aria-hidden="true">${i + 1}</span>` +
+      `<div class="rl"><b aria-hidden="true">${i + 1}</b>${esc(r.label)}</div>` +
+      `<div class="rh">${esc(r.hint)}</div>` +
+      `<div class="rc">` +
+        `<button type="button" class="st" data-d="-1" aria-label="${esc(r.label)}: ${ROWSTEP} points less">−</button>` +
+        `<label class="box"><input inputmode="numeric" autocomplete="off" maxlength="3" aria-label="${esc(r.label)}, new share in percent"><i>%</i></label>` +
+        `<button type="button" class="st" data-d="1" aria-label="${esc(r.label)}: ${ROWSTEP} points more">+</button>` +
+        `<button type="button" class="chip" aria-pressed="false">${esc(U.rowChip)}</button>` +
+      `</div>` +
+      `<div class="rv"></div>`
+    rowsEl.appendChild(el)
+    R[r.id] = { el, input: el.querySelector('input'), box: el.querySelector('.box'), minus: el.querySelector('[data-d="-1"]'), plus: el.querySelector('[data-d="1"]'), chip: el.querySelector('.chip'), hint: el.querySelector('.rh'), rv: el.querySelector('.rv') }
+  })
+
+  const TK = {}
+  for (const r of ROWS) {
+    const line = document.createElement('div'); line.className = 'tk'; line.hidden = true
+    const lab = document.createElement('span'); lab.className = 'tl'; lab.hidden = true
+    $('#ticks').appendChild(line); $('#ticks').appendChild(lab)
+    TK[r.id] = { line, lab, on: false }
+  }
+
+  /* ---------- the question band: one per internal step ---------- */
+  function setBand(k, animate) {
+    const c = D.steps[k - 1]
+    const write = () => ui.setBand({ bridge: c.bridge, question: c.question, instruction: c.instruction, notes: c.notes || [] })
+    const band = ui.band
+    if (!animate || reduce() || !band) { write(); return }
+    band.classList.remove('in'); band.classList.add('out')
+    setTimeout(() => { write(); band.classList.remove('out'); void band.offsetWidth; band.classList.add('in') }, 170)
+  }
+  let noteOn = null
+  function previewNote() {
+    const on = standIn()
+    if (on === noteOn) return
+    noteOn = on
+    document.body.classList.toggle('pv-standin', on)
+    ui.previewNote(on ? `Today's share was left empty, so the sample ${SAMPLE_BASE}% stands in.` : '')
+  }
+
+  /* ---------- saving: the reviewer's answer, in the survey's shape ---------- */
+  function save() {
+    const v = {}
+    if (S.base != null) v.base = S.base
+    for (const r of ROWS) if (S.rows[r.id] != null) v[r.id] = S.rows[r.id]
+    if (S.four != null) v.four = S.four
+    ui.save(Object.keys(v).length ? v : undefined)
+  }
+
+  /* ---------- values ---------- */
+  const setRows = () => ROWS.filter((r) => S.rows[r.id] != null)
+  const unset = () => ROWS.length - setRows().length
+
+  function setBase(v) {
+    S.base = v
+    if (v == null) return
+    for (const r of ROWS) {
+      if (S.nc[r.id]) S.rows[r.id] = v
+      else if (S.rows[r.id] != null && S.rows[r.id] < v) { S.rows[r.id] = null; S.raw[r.id] = '' }
+    }
+    if (S.four != null && S.four < v) { S.four = null; S.raw.four = '' }
+  }
+
+  const reachable = (s, min) => { for (let v = min; v <= 100; v++) if (String(v).startsWith(s)) return true; return false }
+  /** Parse a typed box. Returns { v, err } with v null while incomplete or out of range. */
+  function parse(raw, min, final) {
+    const s = String(raw).replace(/\D/g, '')
+    if (s === '') return { v: null, err: false, s }
+    const n = parseInt(s, 10)
+    if (n > 100) return { v: null, err: true, s }
+    if (n < min) return { v: null, err: final || !reachable(s, min), s }
+    return { v: n, err: false, s }
+  }
+
+  /* ---------- render ---------- */
+  let lastGhost = null
+  function render(skip) {
+    const st = S.step
+    const base = B()
+    const glass = $('#glass'), colwrap = $('#colwrap')
+    const H = glass.clientHeight
+    const live = st === 1 || st === 3
+    colwrap.classList.toggle('live', live)
+    glass.tabIndex = live ? 0 : -1
+    glass.setAttribute('aria-disabled', live ? 'false' : 'true')
+    const cv = st === 1 ? S.base : st === 3 ? S.four : base
+    glass.setAttribute('aria-valuemin', st === 3 ? base : 0)
+    if (cv != null) { glass.setAttribute('aria-valuenow', cv); glass.setAttribute('aria-valuetext', roText(cv)) }
+    else { glass.removeAttribute('aria-valuenow'); glass.setAttribute('aria-valuetext', 'Not set') }
+
+    // fills
+    const fb = $('#fillBase'), ff = $('#fillFour')
+    fb.style.height = (base == null ? 0 : base) + '%'
+    fb.classList.toggle('hide', base == null)
+    const today = $('#today')
+    const tab = fill(U.todayTab, { p: base == null ? '' : base })
+    today.style.opacity = st > 1 && base != null ? 1 : 0
+    today.textContent = narrow() ? tab.replace(' · ', ' ') : tab
+    today.classList.toggle('above', (base || 0) / 100 * H < 22)
+    if (st === 3 && S.four != null) { ff.style.bottom = base + '%'; ff.style.height = (S.four - base) + '%'; ff.classList.remove('hide') }
+    else { ff.style.bottom = (base || 0) + '%'; ff.style.height = '0%'; ff.classList.add('hide') }
+
+    // edge handle
+    const edge = $('#edge')
+    edge.classList.toggle('on', st === 1 && cv != null)
+    edge.classList.toggle('side', st === 3)
+    if (cv != null) edge.style.bottom = cv + '%'
+
+    // ghost bar
+    const ghost = $('#ghost'), gtab = $('#gtab')
+    const gid = st === 2 && S.active && S.rows[S.active] != null ? S.active : null
+    if (gid) {
+      const v = S.rows[gid], row = ROWS.find((r) => r.id === gid)
+      ghost.style.bottom = base + '%'
+      if (gid !== lastGhost && !reduce()) {
+        ghost.classList.add('instant'); ghost.style.height = '0%'; void ghost.offsetWidth; ghost.classList.remove('instant')
+      }
+      ghost.style.height = (v - base) + '%'
+      ghost.classList.add('on')
+      gtab.textContent = row.short
+      gtab.style.opacity = 1
+    } else {
+      ghost.classList.remove('on')
+      gtab.style.opacity = 0
+    }
+    lastGhost = gid
+
+    // thin ticks, each marked with its row's numeral (see the mockup for the clustering rules)
+    const labs = []
+    ROWS.forEach((r, i) => {
+      const T = TK[r.id], v = S.rows[r.id]
+      const show = st >= 2 && v != null && r.id !== gid && !(st === 3 && !r.four)
+      if (!show) { T.line.hidden = true; T.lab.hidden = true; T.on = false; return }
+      if (!T.on && !reduce()) { for (const e of [T.line, T.lab]) { e.classList.remove('fresh'); void e.offsetWidth; e.classList.add('fresh') } }
+      T.on = true; T.line.hidden = false; T.lab.hidden = false
+      T.line.classList.toggle('glow', st === 3); T.lab.classList.toggle('glow', st === 3)
+      T.lab.classList.remove('many', 'hid'); T.lab.textContent = i + 1
+      T.line.style.bottom = v + '%'
+      labs.push({ v, n: i + 1, el: T.lab, y: v / 100 * H })
+    })
+    labs.sort((a, b) => a.v - b.v || a.n - b.n)
+    const DIA = narrow() ? 13 : 15, GAP = 2, W = glass.clientWidth
+    const slots = Math.max(1, Math.floor((W - 6 + GAP) / (DIA + GAP)))
+    const clusters = []
+    for (const L of labs) {
+      const c = clusters[clusters.length - 1]
+      if (c && L.y - c[c.length - 1].y < DIA + 1) c.push(L); else clusters.push([L])
+    }
+    const boxes = []
+    for (const c of clusters) {
+      const placed = []
+      for (const L of c) {
+        let k = 0
+        while (placed.some((p) => p.k === k && Math.abs(p.y - L.y) < DIA + 1)) k++
+        placed.push({ y: L.y, k }); L.k = k
+      }
+      if (Math.max(...c.map((L) => L.k)) < slots) {
+        for (const L of c) {
+          const right = 4 + L.k * (DIA + GAP)
+          L.el.style.bottom = L.y + 'px'; L.el.style.right = right + 'px'
+          boxes.push({ el: L.el, y: L.y, r: right, w: DIA })
+        }
+      } else {
+        const y = c.reduce((a, L) => a + L.y, 0) / c.length
+        const lead = c[0].el
+        lead.textContent = c.map((L) => L.n).sort((a, b) => a - b).join(' ')
+        lead.classList.add('many')
+        lead.style.bottom = y + 'px'; lead.style.right = '4px'
+        for (const L of c.slice(1)) L.el.classList.add('hid')
+        boxes.push({ el: lead, y, r: 4, w: lead.offsetWidth })
+      }
+    }
+    if (gid) {
+      const gy = S.rows[gid] / 100 * H, tw = gtab.offsetWidth, th = gtab.offsetHeight
+      gtab.style.bottom = (gy + 6) + 'px'
+      for (const Bx of boxes) {
+        const x0 = W - Bx.r - Bx.w, x1 = W - Bx.r
+        if (x1 > W / 2 - tw / 2 && x0 < W / 2 + tw / 2 && Bx.y + DIA / 2 > gy + 2 && Bx.y - DIA / 2 < gy + 6 + th) Bx.el.classList.add('hid')
+      }
+    }
+
+    // panes
+    $('#p1').classList.toggle('on', st === 1)
+    $('#p2').classList.toggle('on', st >= 2)
+    rowsEl.classList.toggle('sum', st === 3)
+    $('#together').classList.toggle('on', st === 3)
+
+    // step 1 pane
+    const ro1 = $('#ro1')
+    if (S.base != null) {
+      const html = roHTML(S.base, true)
+      if (ro1.innerHTML !== html) { ro1.innerHTML = html; ro1.classList.remove('pop'); void ro1.offsetWidth; ro1.classList.add('pop') }
+      ro1.classList.remove('blank')
+    } else { ro1.classList.add('blank'); ro1.innerHTML = roHTML(0, true) }
+    if (skip !== 'base') $('#in1').value = S.raw.base != null ? S.raw.base : (S.base != null ? S.base : '')
+    $('#box1').classList.toggle('err', !!S.err.base)
+    $('#err1').textContent = S.err.base ? U.rangeError : ''
+
+    // rows
+    const rangeErr = fill(U.rowRangeError, { base })
+    for (const r of ROWS) {
+      const o = R[r.id], v = S.rows[r.id]
+      o.el.classList.toggle('active', st === 2 && S.active === r.id)
+      o.el.classList.toggle('glow', st === 3 && r.four)
+      o.el.classList.toggle('dim', st === 3 && !r.four)
+      if (skip !== r.id) o.input.value = S.raw[r.id] != null ? S.raw[r.id] : (v != null ? v : '')
+      o.box.classList.toggle('err', !!S.err[r.id])
+      o.hint.textContent = S.err[r.id] ? rangeErr : r.hint
+      o.hint.classList.toggle('err', !!S.err[r.id])
+      o.minus.disabled = v == null ? false : v <= base
+      o.plus.disabled = v != null && v >= 100
+      const pressed = v != null && v === base
+      o.chip.setAttribute('aria-pressed', pressed ? 'true' : 'false')
+      o.rv.innerHTML = v == null ? '' : v === base ? `<small>${esc(U.rowChip)}</small>` : `${v}%`
+      const ti = st === 2 ? 0 : -1
+      o.input.tabIndex = ti; o.minus.tabIndex = ti; o.plus.tabIndex = ti; o.chip.tabIndex = ti
+    }
+
+    // phone: the active row's hint in one fixed slot
+    const hs = $('#hintslot'), ar = st === 2 && S.active ? ROWS.findIndex((r) => r.id === S.active) : -1
+    if (ar >= 0) {
+      const r = ROWS[ar], bad = !!S.err[r.id]
+      hs.innerHTML = `<b>${ar + 1}</b> ${esc(bad ? rangeErr : r.hint)}`
+      hs.classList.toggle('err', bad)
+    } else { hs.innerHTML = ''; hs.classList.remove('err') }
+
+    // step 3 together
+    if (skip !== 'four') $('#in4').value = S.raw.four != null ? S.raw.four : (S.four != null ? S.four : '')
+    $('#box4').classList.toggle('err', !!S.err.four)
+    $('#ro4').innerHTML = S.four != null ? roHTML(S.four, false) : ''
+    const chk = $('#check')
+    let msg = ''
+    if (S.err.four) msg = `<span class="bad">${esc(rangeErr)}</span>`
+    else if (st === 3 && S.four != null) {
+      let hi = null
+      for (const r of ROWS) if (r.four && S.rows[r.id] != null && (!hi || S.rows[r.id] > S.rows[hi.id])) hi = r
+      if (hi && S.four < S.rows[hi.id]) msg = `<span>${esc(U.check.replace('[{row}]', hi.label))}</span>`
+    }
+    if (chk.innerHTML !== msg) chk.innerHTML = msg
+
+    // the survey's own Next label, shown beside the live Next
+    const c = D.steps[st - 1]
+    if (st === 1 && S.base == null) ui.status(false, c.missing)
+    else if (st === 2 && unset() > 0) ui.status(false, fill(c.missing, { n: unset() }))
+    else if (st === 3 && S.four == null) ui.status(false, c.missing)
+    else ui.status(true)
+    previewNote()
+  }
+
+  /* ---------- the column: tap, drag, keys ---------- */
+  const glass = $('#glass'), colwrap = $('#colwrap'), hov = $('#hov')
+  const colLive = () => S.step === 1 || S.step === 3
+  const colMin = () => (S.step === 3 ? B() : 0)
+  const yToV = (y) => { const r = glass.getBoundingClientRect(); return (r.bottom - y) / r.height * 100 }
+  const snap5 = (v) => clamp(Math.round(v / SNAP) * SNAP, colMin(), 100)
+  const fine = (v) => clamp(Math.round(v), colMin(), 100)
+
+  function setCol(v) {
+    if (S.step === 1) { setBase(v); S.raw.base = undefined; S.err.base = false }
+    else if (S.step === 3) { S.four = v; S.raw.four = undefined; S.err.four = false }
+    render(); save()
+  }
+
+  let drag = null
+  colwrap.addEventListener('pointerdown', (e) => {
+    if (!colLive() || (e.pointerType === 'mouse' && e.button !== 0)) return
+    e.preventDefault()
+    try { colwrap.setPointerCapture(e.pointerId) } catch (_) { /* ignore */ }
+    drag = { id: e.pointerId, y0: e.clientY, moved: false }
+    // mouse: focus the column for arrow keys; touch: just close any open box (no focus ring, no keyboard)
+    if (e.pointerType === 'mouse') glass.focus({ preventScroll: true })
+    else if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur()
+    hov.classList.remove('on')
+  })
+  colwrap.addEventListener('pointermove', (e) => {
+    if (!colLive()) { hov.classList.remove('on'); return }
+    if (drag && e.pointerId === drag.id) {
+      if (!drag.moved && Math.abs(e.clientY - drag.y0) < 4) return
+      drag.moved = true; colwrap.classList.add('dragging')
+      const v = fine(yToV(e.clientY))
+      if (v !== (S.step === 1 ? S.base : S.four)) setCol(v)
+    } else if (e.pointerType === 'mouse') {
+      const v = snap5(yToV(e.clientY))
+      hov.style.bottom = v + '%'; hov.firstChild.textContent = v + '%'; hov.classList.add('on')
+    }
+  })
+  const endDrag = (e) => {
+    if (!drag || e.pointerId !== drag.id) return
+    if (!drag.moved && e.type === 'pointerup') setCol(snap5(yToV(e.clientY)))
+    drag = null; colwrap.classList.remove('dragging')
+  }
+  colwrap.addEventListener('pointerup', endDrag)
+  colwrap.addEventListener('pointercancel', endDrag)
+  colwrap.addEventListener('pointerleave', () => hov.classList.remove('on'))
+
+  glass.addEventListener('keydown', (e) => {
+    if (!colLive()) return
+    if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); ui.goNext(); return }
+    const cur = S.step === 1 ? S.base : S.four
+    const from = cur == null ? colMin() : cur
+    let v = null
+    if (e.key === 'ArrowUp' || e.key === 'ArrowRight') v = from + (e.shiftKey ? 5 : 1)
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') v = from - (e.shiftKey ? 5 : 1)
+    else if (e.key === 'PageUp') v = from + 5
+    else if (e.key === 'PageDown') v = from - 5
+    else if (e.key === 'Home') v = colMin()
+    else if (e.key === 'End') v = 100
+    else return
+    if (e.altKey) return   // Alt+arrows belong to the frame (next / back)
+    e.preventDefault()
+    setCol(clamp(v, colMin(), 100))
+  })
+
+  /* ---------- typed boxes ---------- */
+  function typed(key, input, min, final) {
+    const p = parse(input.value, min, final)
+    if (input.value !== p.s) input.value = p.s
+    S.raw[key] = p.s
+    S.err[key] = p.err
+    if (key === 'base') setBase(p.v)
+    else if (key === 'four') S.four = p.v
+    else { S.rows[key] = p.v; S.nc[key] = false }
+    if (final && p.v != null) S.raw[key] = undefined
+    render(final ? undefined : key); save()
+  }
+  const in1 = $('#in1'), in4 = $('#in4')
+  in1.addEventListener('input', () => typed('base', in1, 0, false))
+  in1.addEventListener('blur', () => typed('base', in1, 0, true))
+  in1.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); typed('base', in1, 0, true); in1.blur(); ui.goNext() } })
+  in4.addEventListener('input', () => typed('four', in4, B(), false))
+  in4.addEventListener('blur', () => typed('four', in4, B(), true))
+  in4.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); typed('four', in4, B(), true); in4.blur(); ui.goNext() } })
+
+  ROWS.forEach((r, i) => {
+    const o = R[r.id]
+    o.input.addEventListener('input', () => { S.active = r.id; typed(r.id, o.input, B(), false) })
+    o.input.addEventListener('blur', () => { if (S.raw[r.id] !== undefined) typed(r.id, o.input, B(), true) })
+    o.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); const nx = ROWS[i + 1]; if (nx) R[nx.id].input.focus(); else o.input.blur() }
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.altKey) {
+        e.preventDefault()
+        stepRow(r.id, (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 5 : 1))
+      }
+    })
+    o.minus.addEventListener('click', () => { S.active = r.id; const cur = S.rows[r.id]; set(r.id, cur == null ? B() : Math.max(B(), cur - ROWSTEP)) })
+    o.plus.addEventListener('click', () => { S.active = r.id; const cur = S.rows[r.id]; set(r.id, Math.min(100, (cur == null ? B() : cur) + ROWSTEP)) })
+    o.chip.addEventListener('click', () => {
+      S.active = r.id
+      if (S.rows[r.id] === B()) { S.rows[r.id] = null; S.nc[r.id] = false; S.raw[r.id] = undefined; S.err[r.id] = false; render(); save() }
+      else { set(r.id, B()); S.nc[r.id] = true }
+    })
+    o.el.addEventListener('focusin', () => { if (S.step === 2 && S.active !== r.id) { S.active = r.id; render() } })
+  })
+  function set(id, v) { S.rows[id] = v; S.nc[id] = false; S.raw[id] = undefined; S.err[id] = false; render(); save() }
+  function stepRow(id, d) { const cur = S.rows[id]; set(id, clamp((cur == null ? B() : cur) + d, B(), 100)) }
+
+  // leaving the rows lets the ghost fade into a tick
+  document.addEventListener('pointerdown', (e) => {
+    if (S.step === 2 && S.active && !e.target.closest('.row')) { S.active = null; render() }
+  })
+  rowsEl.addEventListener('focusout', () => setTimeout(() => {
+    if (S.step === 2 && S.active && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('.row'))) {
+      if (!rowsEl.matches(':hover')) { S.active = null; render() }
+    }
+  }, 0))
+
+  /* ---------- Next and Back: the three steps live inside the object; Next always works ---------- */
+  function go(k) {
+    if (document.activeElement && document.activeElement.blur && document.activeElement !== document.body) document.activeElement.blur()
+    // a stand-in today's share keeps rows and the together value inside its range
+    S.step = k; S.active = null
+    if (k >= 2 && S.base == null) {
+      for (const r of ROWS) if (S.rows[r.id] != null && S.rows[r.id] < B()) S.rows[r.id] = null
+      if (S.four != null && S.four < B()) S.four = null
+    }
+    setBand(k, true)
+    render()
+  }
+  ui.onNext(() => { if (S.step < 3) { go(S.step + 1); return true } return false })
+  ui.onBack(() => { if (S.step > 1) { go(S.step - 1); return true } return false })
+
+  window.addEventListener('resize', () => render())
+
+  setBand(1, false)
+  render()
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render())
+})()
+</script>
+</body>
+</html>

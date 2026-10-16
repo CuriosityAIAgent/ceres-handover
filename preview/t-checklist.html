@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-checklist: tap one, pick one or two, picture tiles (6.1, 6.2a), region-then-market (9.4b) and the trade-offs of
+   chapter I (1.1-1.4: two large choices side by side, the pick written into the question's blank).
+   The list look is the 5.2a list from mockups/ledger.html (.list / .opt / .tick), unchanged; the tiles and the
+   region-market step are drawn in the same skin. Fit steps (.d1 .. .d3) tighten the object until nothing clips. */
+.ck { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ck > * { flex: none; }
+
+/* ---------- the list (from mockups/ledger.html, 5.2a) ---------- */
+.list { background: var(--ground); border: 1px solid var(--rule-soft); border-radius: 2px; box-shadow: 0 1px 0 var(--rule-soft), 0 8px 24px rgba(13,12,11,0.04); overflow: hidden; max-width: 620px; }
+.opt {
+  position: relative; display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  min-height: 56px; padding: 9px 20px; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--font-ui); color: var(--ink); transition: background-color 150ms;
+}
+.opt + .opt { border-top: 1px solid var(--rule-soft); }
+@media (hover: hover) { .opt:hover { background: #FBFAF8; } .pic:hover, .mk:hover { background: #FBFAF8; border-color: var(--rule); } .rg:hover { background: #FBFAF8; } }
+.opt:focus-visible { outline: 2px solid var(--navy); outline-offset: -2px; }
+.opt[aria-checked="true"] { background: #EEF3EF; }
+.opt[aria-checked="true"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--forest); }
+.tick { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--rule); background: #fff; flex: none; display: flex; align-items: center; justify-content: center; transition: background-color 150ms, border-color 150ms; }
+.tick.sq { border-radius: 4px; }
+.opt:hover .tick, .pic:hover .tick, .mk:hover .tick { border-color: var(--ink); }
+[aria-checked="true"] > .tick, [aria-checked="true"] .tick { background: var(--forest); border-color: var(--forest); }
+.tick path { stroke: #fff; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 160ms ease; }
+[aria-checked="true"] .tick path { stroke-dashoffset: 0; transition: stroke-dashoffset 280ms cubic-bezier(.3,.7,.3,1) 40ms; }
+.opt .t { flex: 1; min-width: 0; }
+.opt .l { display: block; font-size: 16px; line-height: 21px; }
+.opt[aria-checked="true"] .l { font-weight: 600; }
+.opt .hn { display: block; font-size: 13px; line-height: 17px; color: var(--muted); margin-top: 2px; }
+/* the pinned opt-out sits last, a double rule above it */
+.opt.pin { border-top: 3px double var(--rule-soft); }
+.opt.pin .l { color: var(--ink-2); }
+
+/* fit steps for the list */
+.d1 .opt { min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
+.d2 .opt { min-height: 42px; padding-top: 4px; padding-bottom: 4px; }
+.d2 .opt .l { font-size: 15px; line-height: 19px; }
+.d2 .opt .hn { font-size: 12.5px; line-height: 15px; margin-top: 1px; }
+.d2 .tick { width: 22px; height: 22px; }
+/* step 3: two columns, so a long list still fits a short laptop screen */
+.d3 .list { max-width: none; display: grid; grid-template-columns: 1fr 1fr; }
+.d3 .opt + .opt { border-top: 0; }
+.d3 .opt { border-bottom: 1px solid var(--rule-soft); gap: 11px; padding-left: 14px; padding-right: 12px; }
+.d3 .opt:nth-child(odd) { border-right: 1px solid var(--rule-soft); }
+.d3 .opt.pin { grid-column: 1 / -1; border-top: 0; border-bottom: 0; }
+
+/* ---------- picture tiles (6.1 coverage in a row of four; 6.2a venues, 3 x 2) ---------- */
+.pics { display: grid; gap: 12px; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
+.pic {
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0;
+  padding: 10px 12px 12px; border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--ground);
+  box-shadow: 0 1px 0 var(--rule-soft); cursor: pointer; font-family: var(--font-ui); color: var(--ink);
+  transition: background-color 150ms, border-color 150ms;
+}
+.pic:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.pic[aria-checked="true"] { background: #EEF3EF; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+.pic .tick { position: absolute; left: 9px; top: 9px; width: 22px; height: 22px; }
+.pic .art { display: block; width: 100%; aspect-ratio: 120 / 84; max-height: var(--art, 92px); }
+.pic .art svg { display: block; width: 100%; height: 100%; }
+.pic .l { display: block; margin-top: 6px; font-size: 15px; line-height: 19px; font-weight: 600; }
+.pic .hn { display: block; margin-top: 3px; font-size: 13px; line-height: 17px; color: var(--muted); text-wrap: balance; }
+.pics.venues .pic .l { font-weight: 400; }
+.pics.venues .pic[aria-checked="true"] .l { font-weight: 600; }
+.pics.row4 { --cols: 4; --art: 150px; }
+.pics.row4 .pic { padding: 30px 12px 16px; }
+.pics.row4 .pic .l { margin-top: 12px; }
+.d1 .pics.row4 .pic { padding-top: 26px; }
+.d2 .pics.row4 .pic { padding: 22px 10px 10px; }
+.d2 .pics.row4 .pic .l { margin-top: 6px; }
+.pics.venues .pic { padding-top: 14px; }
+.pics.venues { --cols: 3; --art: 104px; }
+.d1 .pics.row4 { --art: 112px; }
+.d2 .pics.row4 { --art: 88px; }
+.d3 .pics.row4 { --art: 66px; }
+.d1 .pics.venues { --art: 72px; gap: 10px; }
+.d2 .pics.venues { --art: 56px; gap: 8px; }
+.d2 .pic { padding: 7px 10px 9px; }
+.d3 .pics.venues { --art: 44px; gap: 8px; }
+.d3 .pic { padding: 6px 8px 8px; }
+.d3 .pic .l { margin-top: 3px; }
+.pic.shake .t, .opt.shake .t { animation: shake 320ms ease; }
+@keyframes shake { 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
+
+/* ---------- 1.1-1.4: a choice of two (tradeoff), two large cards side by side ---------- */
+.trade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 14px; }
+.tr {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-width: 0;
+  min-height: 206px; padding: 30px 30px 28px; border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--ground);
+  box-shadow: 0 1px 0 var(--rule-soft), 0 10px 26px rgba(13,12,11,0.05); cursor: pointer; color: var(--ink);
+  transition: background-color 150ms, border-color 150ms, box-shadow 150ms, transform 150ms;
+}
+.tr::after { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(140,133,122,0.16); pointer-events: none; transition: border-color 150ms; }
+@media (hover: hover) { .tr:hover { border-color: var(--rule); transform: translateY(-2px); box-shadow: 0 1px 0 var(--rule-soft), 0 14px 30px rgba(13,12,11,0.08); } }
+.tr:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+.tr .tick { position: absolute; left: 14px; top: 14px; }
+.tr .t { display: block; max-width: 100%; }
+.tr .l { display: block; font-family: var(--font-text); font-weight: 600; font-size: 25px; line-height: 31px; letter-spacing: -0.003em; text-wrap: balance; }
+.tr .hn { display: block; margin-top: 8px; font-family: var(--font-ui); font-size: 14px; line-height: 19px; color: var(--muted); text-wrap: balance; }
+.tr[aria-checked="true"] { background: #EEF3EF; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest), 0 10px 26px rgba(31,75,58,0.10); transform: none; }
+.tr[aria-checked="true"]::after { border-color: rgba(31,75,58,0.22); }
+/* the pick, written into the question's blank (first letter lower case); the blank keeps its width until then */
+.c-q .tb { border-bottom: 2px solid var(--rule); padding: 0 0.06em; }
+.c-q .tb.gap { color: transparent; letter-spacing: -0.04em; }
+.c-q .tb.on { color: var(--forest); border-bottom-color: var(--forest); }
+.c-q .tb.in { animation: tbIn 260ms cubic-bezier(.2,.7,.2,1); }
+@keyframes tbIn { from { opacity: 0; } to { opacity: 1; } }
+.d1 .tr { min-height: 160px; padding-top: 22px; padding-bottom: 20px; }
+.d2 .tr { min-height: 120px; padding: 18px 20px 16px; }
+.d2 .tr .l { font-size: 21px; line-height: 26px; }
+
+/* ---------- 9.4b: a region, then a market in it ---------- */
+.rm { display: flex; flex-direction: column; gap: 12px; }
+.rg-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--ground); box-shadow: 0 1px 0 var(--rule-soft); }
+.rg {
+  position: relative; min-height: 50px; padding: 6px 12px; border: 0; background: transparent; cursor: pointer; text-align: center;
+  font-family: var(--font-ui); font-size: 15px; line-height: 19px; color: var(--ink); transition: background-color 150ms;
+}
+.rg + .rg { border-left: 1px solid var(--rule-soft); }
+.rg:focus-visible { outline: 2px solid var(--navy); outline-offset: -2px; }
+.rg[aria-checked="true"] { background: var(--ink); color: var(--paper); font-weight: 600; }
+.mk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-height: 96px; align-content: start; }
+.mk {
+  position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 5px 12px; min-width: 0; text-align: left;
+  border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--ground); box-shadow: 0 1px 0 var(--rule-soft); cursor: pointer;
+  font-family: var(--font-ui); font-size: 14.5px; line-height: 18px; color: var(--ink); transition: background-color 150ms, border-color 150ms;
+}
+.mk:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.mk[aria-checked="true"] { background: #EEF3EF; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); font-weight: 600; }
+.mk .tick { width: 20px; height: 20px; }
+.mk .tick svg { width: 15px; height: 15px; }
+.mk-ghost { min-height: 44px; border: 1px dashed var(--rule-soft); border-radius: 2px; background: rgba(255,255,255,0.4); }
+.mk-in { animation: mkIn 260ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes mkIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.rm-other { display: flex; align-items: stretch; gap: 10px; border-top: 3px double var(--rule-soft); padding-top: 12px; }
+.rm-other .mk { flex: none; min-width: calc((100% - 24px) / 4); white-space: nowrap; padding-right: 16px; }
+.oth-field { flex: 1; display: none; align-items: center; gap: 10px; min-width: 0; border-bottom: 1.5px solid var(--ink); }
+.oth-field.on { display: flex; }
+.oth-field input { flex: 1; min-width: 0; border: 0; background: transparent; font-family: var(--font-text); font-size: 18px; color: var(--ink); padding: 8px 2px 6px; outline: none; }
+.oth-field:focus-within { border-bottom-color: var(--navy); }
+.oth-count { font-family: var(--font-ui); font-size: 12px; color: var(--rule); font-variant-numeric: tabular-nums; }
+.d1 .rm { gap: 9px; }
+.d1 .rg { min-height: 44px; }
+.d1 .mk, .d1 .mk-ghost { min-height: 40px; }
+.d1 .rm-other { padding-top: 9px; }
+
+/* ---------- short laptop (1280x650) ---------- */
+@media (min-width: 701px) and (max-height: 720px) {
+  .c-obj { padding-top: 14px; }
+  .c-next-bar { padding-top: 10px; padding-bottom: 12px; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 700px) {
+  .c-head { padding-top: 14px; }
+  .c-bridge { font-size: 16px; line-height: 21px; margin-bottom: 3px; }
+  .c-bridge::before { margin-top: 9px; }
+  .c-i { font-size: 14px; line-height: 18px; margin-top: 5px; }
+  .c-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; margin-top: 3px; }
+  .c-obj { padding-top: 10px; }
+  .c-next-bar { padding-top: 8px; padding-bottom: 12px; }
+  .opt { min-height: 46px; padding: 6px 14px; gap: 12px; }
+  .opt .l { font-size: 15px; line-height: 19px; }
+  .opt .hn { font-size: 12px; line-height: 15px; margin-top: 1px; }
+  .opt .tick { width: 22px; height: 22px; }
+  .opt[aria-checked="true"] .l { font-weight: 400; } /* bold would re-wrap long labels and jump the list */
+  .d1 .opt { min-height: 42px; padding-top: 4px; padding-bottom: 4px; }
+  .d2 .opt { min-height: 38px; padding-top: 3px; padding-bottom: 3px; }
+  .d2 .opt .l { font-size: 14.5px; line-height: 18px; }
+  .d3 .list { display: block; }
+  .d3 .opt { min-height: 36px; padding: 2px 12px; border-right: 0 !important; border-bottom: 0; }
+  .d3 .opt + .opt { border-top: 1px solid var(--rule-soft); }
+  .d3 .opt .hn { font-size: 11.5px; line-height: 14px; }
+
+  .pics { gap: 8px; }
+  .pics.row4 { --cols: 2; --art: 84px; }
+  .pics.venues { --cols: 2; --art: 48px; }
+  .pic, .pics.venues .pic { padding: 6px 8px 8px; }
+  .pics.row4 .pic { padding: 22px 8px 10px; }
+  .pics.row4 .pic .l { margin-top: 6px; }
+  .pic .tick { left: 6px; top: 6px; width: 20px; height: 20px; }
+  .pic .l { font-size: 14px; line-height: 17px; margin-top: 4px; }
+  .pic .hn { font-size: 12px; line-height: 15px; margin-top: 2px; }
+  .pics.venues .pic .l { font-size: 13.5px; line-height: 16px; }
+  .d1 .pics.row4 { --art: 68px; }
+  .d2 .pics.row4 { --art: 54px; }
+  .d3 .pics.row4 { --art: 42px; }
+  .d1 .pics.venues { --art: 42px; }
+  .d2 .pics.venues { --art: 36px; gap: 6px; }
+  .d3 .pics.venues { --art: 30px; gap: 6px; }
+
+  .trade { gap: 10px; margin-top: 8px; }
+  .tr { min-height: 140px; padding: 30px 12px 18px; }
+  .tr::after { inset: 4px; }
+  .tr .tick { left: 10px; top: 10px; width: 22px; height: 22px; }
+  .tr .l { font-size: 18px; line-height: 23px; }
+  .tr .hn { font-size: 12.5px; line-height: 16px; margin-top: 5px; }
+  .d1 .tr { min-height: 112px; padding-top: 28px; padding-bottom: 12px; }
+  .d2 .tr { min-height: 96px; padding: 26px 10px 10px; }
+  .d2 .tr .l { font-size: 17px; line-height: 21px; }
+
+  .rm { gap: 8px; }
+  .rg { min-height: 48px; padding: 4px 6px; font-size: 13.5px; line-height: 16px; }
+  .mk-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; min-height: 80px; }
+  .mk { min-height: 40px; padding: 3px 7px; gap: 6px; font-size: 13px; line-height: 15px; }
+  .mk .tick { width: 17px; height: 17px; }
+  .mk .tick svg { width: 13px; height: 13px; }
+  .mk-ghost { min-height: 36px; }
+  .rm-other { padding-top: 8px; gap: 8px; }
+  .rm-other .mk { width: auto; flex: none; padding-right: 10px; }
+  .oth-field input { font-size: 16px; padding: 6px 2px 4px; }
+  .d1 .rg { min-height: 42px; }
+  .d1 .mk { min-height: 36px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'checklist') { CeresNav.go(step.id); return }
+  const P = window.CeresPreview
+  const esc = P.esc, glue = P.glue
+  const D = step.data
+  const ui = P.mount(step, { objClass: 'ck-obj' })
+  const narrow = () => window.matchMedia('(max-width: 700px)').matches
+
+  const TICK = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12.5 L10 17 L19 7.5" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg>'
+  const tickHTML = (sq) => `<span class="tick${sq ? ' sq' : ''}" aria-hidden="true">${TICK}</span>`
+
+  /* ---------------- seeded shuffle (stable per step, so every reviewer sees the same start order) ---------------- */
+  function seedOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) } return h >>> 0 }
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
+  function shuffled(list, seed) { const r = rng(seed); const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t } return a }
+  function ordered(options) {
+    const free = options.filter((o) => !o.pinned), pinned = options.filter((o) => o.pinned)
+    return (D.shuffle ? shuffled(free, D.seed || seedOf('ceres:' + step.id)) : free).concat(pinned)
+  }
+
+  /* ---------------- the engraved pictures: line art in ink, bronze accents, no faces ---------------- */
+  const INK = '#262320', BR = '#7A3E12'
+  const st = (c, w) => `fill="none" stroke="${c || INK}" stroke-width="${w || 1.3}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"`
+  const hatch = (x1, y1, x2, y2, n, dx, dy, c) => { let s = ''; for (let i = 0; i < n; i++) s += `M${x1 + i * dx} ${y1 + i * dy} L${x2 + i * dx} ${y2 + i * dy} `; return `<path d="${s}" ${st(c || INK, 0.7)} opacity="0.55"/>` }
+  const ground = (x1, x2, y) => `<path d="M${x1} ${y} H${x2}" ${st(INK, 1)}/>` + hatch(x1 + 4, y + 3, x1 + 1, y + 6, Math.floor((x2 - x1 - 6) / 5), 5, 0)
+  const ART = {
+    // 6.1: a handshake (geometry after Lucide's "handshake" icon, ISC licence), with engraved sleeves
+    handshake: () =>
+      `<g transform="translate(24 4) scale(3)">` +
+      `<path d="m11 17 2 2a1 1 0 1 0 3-3" ${st()}/>` +
+      `<path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" ${st()}/>` +
+      `<path d="m21 3 1 11h-2" ${st(BR)}/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" ${st()}/><path d="M3 4h8" ${st()}/>` +
+      `<path d="M3 3 2 14" ${st(BR)}/></g>` +
+      `<path d="M24 80 H96" ${st(INK, 0.9)} opacity="0.5"/>`,
+    // 6.1: a laptop, a figure on the screen (no face)
+    'laptop-face': () =>
+      `<rect x="28" y="12" width="64" height="46" rx="3" ${st()}/><rect x="33" y="17" width="54" height="36" ${st(INK, 1)}/>` +
+      `<circle cx="60" cy="14.5" r="0.9" fill="${INK}"/>` +
+      `<circle cx="60" cy="30" r="6.5" ${st(BR)}/><path d="M46 53 C46 44 52 39.5 60 39.5 C68 39.5 74 44 74 53" ${st(BR)}/>` +
+      `<path d="M16 62 L28 58 H92 L104 62 L108 68 H12 Z" ${st()}/><path d="M52 64 H68" ${st(INK, 1)}/>` + hatch(20, 66, 24, 63, 17, 5, 0),
+    // 6.1: three telephone handsets
+    'three-handsets': () => {
+      const h = (x, y, r, c) => `<g transform="translate(${x} ${y}) rotate(${r})">
+        <path d="M-24 5 V1 C-24 -4 -20 -7 -14 -7 C-7 -13 7 -13 14 -7 C20 -7 24 -4 24 1 V5 H13 V2 C13 -1 11 -2 9 -2 C4 -6 -4 -6 -9 -2 C-11 -2 -13 -1 -13 2 V5 Z" fill="#fff" stroke="${c || INK}" stroke-width="1.3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        <path d="M-22.5 7.5 H-14.5 M14.5 7.5 H22.5" ${st(c || INK, 1)}/>
+        <path d="M-8 -9 C-3 -11 3 -11 8 -9" ${st(c || INK, 0.7)} opacity="0.7"/></g>`
+      return `<path d="M60 64 C46 68 30 62 26 50 M60 64 C74 68 90 62 94 50" ${st(INK, 0.9)} opacity="0.6"/>` +
+        h(32, 34, -8) + h(88, 34, 8) + h(60, 56, 0, BR)
+    },
+    // 6.1: a phone with a chat bubble
+    'phone-chat': () =>
+      `<rect x="38" y="10" width="34" height="64" rx="5" ${st()}/><rect x="42" y="17" width="26" height="48" ${st(INK, 1)}/>` +
+      `<path d="M51 13.5 H59 M50 69.5 H60" ${st()}/>` +
+      `<path d="M45 52 H58 M45 56 H62 M45 60 H54" ${st(INK, 0.9)} opacity="0.7"/>` +
+      `<path d="M64 14 H102 C105 14 107 16 107 19 V36 C107 39 105 41 102 41 H80 L72 48 L74 41 H64 C61 41 59 39 59 36 V19 C59 16 61 14 64 14 Z" fill="${'#F8F7F4'}" stroke="${BR}" stroke-width="1.3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>` +
+      `<path d="M66 23 H99 M66 28 H96 M66 33 H86" ${st(BR, 1)}/>`,
+    // 6.2a: a doorway (panelled door, fanlight, steps; no columns)
+    doorway: () =>
+      `<path d="M38 72 V24 A22 22 0 0 1 82 24 V72" ${st()}/><path d="M43 72 V26 H77 V72" ${st()}/>` +
+      `<path d="M43 26 A17 17 0 0 1 77 26" ${st(BR)}/><path d="M60 26 V10 M60 26 L49 14 M60 26 L71 14 M60 26 L45 21 M60 26 L75 21" ${st(BR, 0.9)}/>` +
+      `<path d="M60 26 V72" ${st(INK, 1)}/><rect x="47" y="32" width="9" height="16" ${st(INK, 1)}/><rect x="64" y="32" width="9" height="16" ${st(INK, 1)}/>` +
+      `<rect x="47" y="53" width="9" height="15" ${st(INK, 1)}/><rect x="64" y="53" width="9" height="15" ${st(INK, 1)}/>` +
+      `<circle cx="57.5" cy="51" r="1.4" ${st(BR)}/>` +
+      `<path d="M32 72 H88 M28 76 H92 M24 80 H96" ${st()}/>` +
+      `<path d="M26 40 H32 M29 40 V36 M26 36 H32 L31 30 H27 Z M88 40 H94 M91 40 V36 M88 36 H94 L93 30 H89 Z" ${st(BR, 1)}/>`,
+    // 6.2a: a house
+    house: () =>
+      `<path d="M26 44 L60 18 L94 44" ${st()}/><path d="M33 39 V74 H87 V39" ${st()}/><path d="M74 28 V18 H82 V34" ${st()}/>` +
+      `<path d="M54 74 V54 H66 V74" ${st(BR)}/><circle cx="63.5" cy="64" r="0.9" fill="${BR}"/>` +
+      `<rect x="39" y="50" width="10" height="12" ${st(INK, 1)}/><path d="M44 50 V62 M39 56 H49" ${st(INK, 0.8)}/>` +
+      `<rect x="71" y="50" width="10" height="12" ${st(INK, 1)}/><path d="M76 50 V62 M71 56 H81" ${st(INK, 0.8)}/>` +
+      hatch(40, 40, 49, 33, 4, 6, 0) + ground(16, 104, 74),
+    // 6.2a: an office block
+    'office-block': () => {
+      let w = ''
+      for (let r = 0; r < 7; r++) for (let c = 0; c < 4; c++) w += `<rect x="${46 + c * 8}" y="${14 + r * 8}" width="4" height="5" ${st(INK, 0.8)}/>`
+      return `<path d="M42 74 V9 H80 V74" ${st()}/><path d="M42 9 L46 5 H76 L80 9" ${st(INK, 1)}/>` + w +
+        `<path d="M55 74 V68 H67 V74" ${st(BR)}/>` +
+        `<path d="M80 74 V32 H98 V74" ${st()}/>` + hatch(84, 38, 84, 41, 5, 3, 0) + hatch(84, 50, 84, 53, 5, 3, 0) + hatch(84, 62, 84, 65, 5, 3, 0) +
+        `<path d="M42 74 V44 H26 V74" ${st()}/>` + hatch(30, 50, 30, 53, 4, 3, 0) + hatch(30, 60, 30, 63, 4, 3, 0) + ground(14, 106, 74)
+    },
+    // 6.2a: a table with two coffee cups (never stemmed glasses)
+    'coffee-cups': () => {
+      const cup = (x, c) => `<path d="M${x} 44 H${x + 18} V50 C${x + 18} 55 ${x + 14} 58 ${x + 9} 58 C${x + 4} 58 ${x} 55 ${x} 50 Z" ${st(c)}/>` +
+        `<path d="M${x + 18} 47 C${x + 23} 47 ${x + 23} 53 ${x + 17.5} 53" ${st(c)}/>` +
+        `<ellipse cx="${x + 9}" cy="59.5" rx="14" ry="2.6" ${st(c)}/>`
+      return cup(30, INK) + cup(66, INK) +
+        `<path d="M36 40 C34 36 38 34 36 30 M42 40 C40 36 44 34 42 30" ${st(BR, 1)}/>` +
+        `<path d="M72 40 C70 36 74 34 72 30 M78 40 C76 36 80 34 78 30" ${st(BR, 1)}/>` +
+        `<path d="M10 64 H110 M14 68 H106" ${st()}/><path d="M24 68 L20 82 M96 68 L100 82" ${st()}/>`
+    },
+    // 6.2a: a lounge with armchairs
+    lounge: () => {
+      const chair = (x, f) => `<g transform="translate(${x} 0) scale(${f} 1)">
+        <path d="M0 34 C0 28 4 26 10 26 H20 C26 26 28 30 28 34 V50" ${st()}/>
+        <path d="M-4 46 C-6 42 -2 40 2 41 V62 H-2 C-4 62 -4 60 -4 58 Z" ${st()}/>
+        <path d="M2 50 H30 C33 50 34 52 34 55 V62 H2" ${st()}/>
+        <path d="M30 41 C34 40 37 42 35 46 L34 62" ${st()}/>
+        <path d="M0 62 V68 M32 62 V68" ${st()}/></g>`
+      return chair(12, 1) + chair(108, -1) +
+        `<ellipse cx="60" cy="54" rx="11" ry="3" ${st(BR)}/><path d="M60 57 V70 M53 70 H67" ${st(BR)}/>` +
+        `<rect x="48" y="10" width="24" height="17" ${st(INK, 1)}/><rect x="51" y="13" width="18" height="11" ${st(INK, 0.8)}/><path d="M51 22 L56 17 L60 20 L64 16 L69 21" ${st(BR, 0.9)}/>` + hatch(10, 72, 7, 76, 21, 5, 0)
+    },
+    // 6.2a: a lectern
+    lectern: () =>
+      `<path d="M40 30 L80 30 L84 40 L36 40 Z" ${st()}/><path d="M48 40 L72 40 L68 72 L52 72 Z" ${st()}/>` +
+      `<path d="M44 72 H76 V77 H44 Z" ${st()}/><path d="M56 48 H64 M55 54 H65" ${st(BR, 1)}/>` +
+      `<path d="M74 30 C75 24 77 20 80 17" ${st()}/><ellipse cx="81" cy="15.5" rx="2.4" ry="3.4" transform="rotate(30 81 15.5)" ${st(INK, 1.1)}/>` +
+      hatch(53, 44, 56, 68, 4, 3.2, 0) +
+      `<path d="M14 80 H106" ${st(INK, 1)}/>` +
+      [22, 32, 88, 98].map((x) => `<path d="M${x} 80 V68 H${x + 6} V80 M${x} 72 H${x + 6} M${x} 68 V62" ${st(INK, 0.9)} opacity="0.75"/>`).join(''),
+  }
+  function artSVG(name) {
+    const f = ART[name]
+    return `<svg viewBox="0 0 120 84" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${f ? f() : ''}</svg>`
+  }
+
+  // 6.2a fires only if either number on 6.2 (first year, each year after) is 1 or more; say so when the reviewer's own
+  // two numbers would skip it
+  if (step.parent === '6.2' && step.previewCondition) {
+    const got = CeresNav.answers.get('6.2')
+    const nums = got && typeof got === 'object' ? ['first', 'after'].map((k) => got[k]).filter((v) => typeof v === 'number' && !isNaN(v)) : []
+    if (nums.length === 2 && nums.every((v) => v < 1)) ui.previewNote('Both your numbers on 6.2 are 0, so this would not show in the survey.')
+  }
+
+  /* ---------------- state ---------------- */
+  const saved = ui.load()
+  const root = document.createElement('div'); root.className = 'ck'
+  ui.obj.appendChild(root)
+
+  if (D.mode === 'region-market') buildRegionMarket()
+  else buildChoices()
+
+  /* ---------------- tap one / pick one or two (rows or picture tiles) ---------------- */
+  function buildChoices() {
+    const one = D.mode !== 'two'
+    const max = one ? 1 : (D.max || 2)
+    const trade = !!D.tradeoff
+    // a trade-off's two sides swap at random on every page load (per person in the survey); other lists keep the
+    // preview's fixed seeded order
+    const opts = trade ? shuffled(D.options, (Math.random() * 4294967296) >>> 0) : ordered(D.options)
+    let sel = []
+    if (one && typeof saved === 'string' && opts.some((o) => o.id === saved)) sel = [saved]
+    if (!one && Array.isArray(saved)) sel = saved.filter((id) => opts.some((o) => o.id === id)).slice(0, max)
+
+    const pics = !!D.pictures
+    const box = document.createElement('div')
+    box.setAttribute('role', one ? 'radiogroup' : 'group')
+    box.setAttribute('aria-label', ui.step.question ? CeresNav.fill(ui.step.question, ui.vars) : '')
+    if (trade) box.className = 'trade'
+    else if (pics) box.className = 'pics ' + (D.layout === 'row' ? 'row4' : 'venues')
+    else box.className = 'list'
+    box.innerHTML = opts.map((o) => {
+      const role = one ? 'radio' : 'checkbox'
+      const hint = o.hint ? `<span class="hn">${glue(o.hint)}</span>` : ''
+      if (trade) return `<button type="button" class="tr" role="${role}" aria-checked="false" data-option="${esc(o.id)}" tabindex="-1">
+          ${tickHTML(false)}<span class="t"><span class="l">${glue(o.label)}</span>${hint}</span></button>`
+      if (pics) return `<button type="button" class="pic" role="${role}" aria-checked="false" data-option="${esc(o.id)}" tabindex="-1">
+          ${tickHTML(!one)}<span class="art">${artSVG(o.picture)}</span><span class="t"><span class="l">${glue(o.label)}</span>${hint}</span></button>`
+      return `<button type="button" class="opt${o.pinned ? ' pin' : ''}" role="${role}" aria-checked="false" data-option="${esc(o.id)}" tabindex="-1">
+          ${tickHTML(!one)}<span class="t"><span class="l">${glue(o.label)}</span>${hint}</span></button>`
+    }).join('')
+    root.appendChild(box)
+    const btns = Array.from(box.children)
+
+    // 8.2a: the fallback wording, for review only
+    if (D.fallback) {
+      const F = D.fallback
+      ui.previewNote(`If Comp 2.0 may not be named: “${F.bridge}” “${F.question}” ${F.options.map((o) => o.label).join(' · ')}.`)
+    }
+
+    /* 1.1-1.4: the question is a sentence with a blank; the pick is written into it, first letter in lower case. A
+       longer sentence can take another line: the room for it is held above the cards (and given back as the heading
+       grows), so the cards never move under the finger. */
+    const BLANK = /_{3,}/
+    const qOf = () => (trade && ui.band ? ui.band.querySelector('.c-q') : null)   // looked up each time: the frame may redraw the band
+    const qHTML = qOf() ? qOf().innerHTML : ''
+    const qEl = qHTML && BLANK.test(qHTML) ? qOf() : null
+    const lower = (t) => t.charAt(0).toLowerCase() + t.slice(1)
+    function paintBlank(id, animate) {
+      const q = qOf()
+      if (!qEl || !q) return
+      const o = opts.find((x) => x.id === id)
+      q.innerHTML = qHTML.replace(BLANK, (m) => o
+        ? `<span class="tb on${animate ? ' in' : ''}">${glue(lower(o.label))}</span>`
+        : `<span class="tb gap">${m}</span>`)
+    }
+    let qMax = 0
+    function holdBlank() {
+      const q = qOf()
+      if (!qEl || !q) return
+      qMax = 0
+      opts.concat([null]).forEach((o) => { paintBlank(o && o.id, false); qMax = Math.max(qMax, q.offsetHeight) })
+      paintBlank(sel[0], false)
+      holdCards()
+    }
+    function holdCards() {
+      const q = qOf()
+      if (!qEl || !q || !qMax) return
+      box.style.marginTop = ''
+      const base = parseFloat(getComputedStyle(box).marginTop) || 0
+      box.style.marginTop = (base + qMax - q.offsetHeight) + 'px'
+    }
+    window.addEventListener('resize', holdBlank)
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(holdBlank)
+
+    function draw() {
+      btns.forEach((b) => b.setAttribute('aria-checked', sel.includes(b.dataset.option) ? 'true' : 'false'))
+      // roving focus: the chosen one (or the first) takes Tab
+      const focusId = sel[0] || btns[0].dataset.option
+      btns.forEach((b) => { b.tabIndex = b.dataset.option === focusId ? 0 : -1 })
+    }
+    function report() {
+      if (one) { ui.save(sel[0]); }
+      else ui.save(sel.length ? sel.slice() : undefined)
+      if (sel.length >= (D.min || 1)) ui.status(true)
+      else ui.status(false, D.missing || undefined)
+    }
+    function tap(id, viaKey) {
+      if (one) { const was = sel[0]; sel = [id]; if (qEl && was !== id) { paintBlank(id, true); holdCards() } }
+      else if (sel.includes(id)) sel = sel.filter((x) => x !== id)
+      else if (sel.length >= max) { sel = sel.slice(1).concat(id) }   // full: the earlier pick gives way
+      else sel = sel.concat(id)
+      draw(); report()
+    }
+    btns.forEach((b, i) => {
+      b.addEventListener('click', () => tap(b.dataset.option))
+      b.addEventListener('keydown', (e) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return   // Alt+arrows belong to the frame (Next / Back)
+        const k = e.key
+        const cols = pics ? Math.max(1, Math.round(box.clientWidth / btns[0].offsetWidth)) : 1
+        let j = null
+        if (k === 'ArrowRight') j = i + 1
+        else if (k === 'ArrowLeft') j = i - 1
+        else if (k === 'ArrowDown') j = i + cols
+        else if (k === 'ArrowUp') j = i - cols
+        else if (k === 'Home') j = 0
+        else if (k === 'End') j = btns.length - 1
+        if (j === null) return
+        e.preventDefault()
+        j = (j + btns.length) % btns.length
+        btns.forEach((x) => { x.tabIndex = -1 }); btns[j].tabIndex = 0; btns[j].focus()
+        if (one) tap(btns[j].dataset.option, true)       // radios follow focus (as the mockup list)
+      })
+    })
+    draw()
+    holdBlank()
+    if (sel.length) report(); else ui.status(false, D.missing || undefined)
+  }
+
+  /* ---------------- 9.4b: a region, then a market in it; "Another market" pinned with a field ---------------- */
+  function buildRegionMarket() {
+    const regions = D.regions, O = D.other
+    const limit = (O.field && O.field.limit) || 40
+    let region = null, market = null, other = false, otherText = ''
+    if (saved && typeof saved === 'object') {
+      const r = regions.find((x) => x.id === saved.region)
+      region = r ? r.id : null
+      if (saved.market && !(r && r.markets.includes(saved.market))) { other = true; otherText = String(saved.market || '').slice(0, limit) }
+      else if (r && r.markets.includes(saved.market)) market = saved.market
+    }
+
+    root.innerHTML = `<div class="rm">
+        <div class="rg-row" role="radiogroup" aria-label="Region">${regions.map((r, i) =>
+          `<button type="button" class="rg" role="radio" aria-checked="false" data-region="${esc(r.id)}" tabindex="-1">${esc(r.label)}</button>`).join('')}</div>
+        <div class="mk-grid" role="radiogroup" aria-label="Market" id="mkGrid"></div>
+        <div class="rm-other">
+          <button type="button" class="mk oth" role="checkbox" aria-checked="false" data-option="${esc(O.id)}">${tickHTML(false)}<span class="t">${esc(O.label)}</span></button>
+          <label class="oth-field" id="othField"><span class="sr">${esc(O.label)}</span><input type="text" id="othInput" maxlength="${limit}" autocomplete="off" spellcheck="false"><span class="oth-count" id="othCount"></span></label>
+        </div>
+      </div>`
+    const rgBtns = Array.from(root.querySelectorAll('.rg'))
+    const grid = root.querySelector('#mkGrid')
+    const othBtn = root.querySelector('.oth')
+    const field = root.querySelector('#othField'), input = root.querySelector('#othInput'), count = root.querySelector('#othCount')
+    input.value = otherText
+
+    function drawMarkets(animate) {
+      const r = regions.find((x) => x.id === region)
+      if (!r) {
+        grid.setAttribute('aria-hidden', 'true')
+        grid.innerHTML = '<span class="mk-ghost"></span>'.repeat(narrow() ? 3 : 4)
+        return
+      }
+      grid.removeAttribute('aria-hidden')
+      grid.setAttribute('aria-label', r.label)
+      grid.innerHTML = r.markets.map((m, i) =>
+        `<button type="button" class="mk${animate ? ' mk-in' : ''}" role="radio" aria-checked="false" data-market="${esc(m)}" tabindex="-1" style="animation-delay:${animate ? i * 22 : 0}ms">${tickHTML(false)}<span class="t">${esc(m)}</span></button>`).join('')
+      const mks = Array.from(grid.children)
+      mks.forEach((b, i) => {
+        b.addEventListener('click', () => { market = b.dataset.market; other = false; draw(); report() })
+        b.addEventListener('keydown', (e) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return   // Alt+arrows belong to the frame (Next / Back)
+          const cols = Math.max(1, Math.round(grid.clientWidth / b.offsetWidth))
+          const d = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key]
+          if (d == null) return
+          e.preventDefault()
+          const j = (i + d + mks.length) % mks.length
+          mks[j].focus(); market = mks[j].dataset.market; other = false; draw(); report()
+        })
+      })
+    }
+    function draw() {
+      rgBtns.forEach((b) => { const on = b.dataset.region === region; b.setAttribute('aria-checked', on ? 'true' : 'false'); b.tabIndex = on || (!region && b === rgBtns[0]) ? 0 : -1 })
+      const mks = Array.from(grid.querySelectorAll('.mk'))
+      mks.forEach((b) => b.setAttribute('aria-checked', !other && b.dataset.market === market ? 'true' : 'false'))
+      const focusM = mks.find((b) => !other && b.dataset.market === market) || mks[0]
+      mks.forEach((b) => { b.tabIndex = b === focusM ? 0 : -1 })
+      othBtn.setAttribute('aria-checked', other ? 'true' : 'false')
+      field.classList.toggle('on', other)
+      count.textContent = input.value.length >= limit * 0.8 ? `${input.value.length}/${limit}` : ''
+    }
+    function report() {
+      const text = input.value.trim()
+      if (other) ui.save({ region: region || '', market: text })
+      else if (region || market) ui.save({ region: region || '', market: market || '' })
+      else ui.save(undefined)
+      const done = other ? text.length >= 2 : !!(region && market)
+      ui.status(done, done ? '' : D.missing || undefined)
+    }
+    function setRegion(id) {
+      if (id === region) return
+      region = id; market = null
+      drawMarkets(true); draw(); report()
+    }
+    rgBtns.forEach((b, i) => {
+      b.addEventListener('click', () => setRegion(b.dataset.region))
+      b.addEventListener('keydown', (e) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return   // Alt+arrows belong to the frame (Next / Back)
+        const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]
+        if (d == null) return
+        e.preventDefault()
+        const j = (i + d + rgBtns.length) % rgBtns.length
+        rgBtns[j].focus(); setRegion(rgBtns[j].dataset.region)
+      })
+    })
+    othBtn.addEventListener('click', () => {
+      other = !other
+      if (other) market = null
+      draw(); report()
+      if (other) setTimeout(() => input.focus({ preventScroll: true }), 30)
+    })
+    input.addEventListener('input', () => { draw(); report() })
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ui.goNext() } })
+
+    drawMarkets(false); draw()
+    if (region || other) report(); else ui.status(false, D.missing || undefined)
+  }
+
+  /* ---------------- fit: tighten in steps until nothing clips ---------------- */
+  function fit() {
+    const o = ui.obj
+    for (let lv = 0; lv <= 3; lv++) {
+      root.classList.remove('d1', 'd2', 'd3')
+      for (let k = 1; k <= lv; k++) root.classList.add('d' + k)
+      if (o.scrollHeight <= o.clientHeight + 1 && root.scrollHeight <= root.clientHeight + 1) return
+    }
+  }
+  fit()
+  let rt = 0
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(fit, 80) })
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit)
+})()
+</script>
+</body>
+</html>

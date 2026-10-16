@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@1,6..96,500&family=Source+Serif+4:ital,opsz,wght@1,8..60,400&display=swap">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-newspaper: 10.5, the front page. Ported from mockups/newspaper.html (QA'd 10 Oct): page CSS and the page code kept as
+   they were; the frame's rail, band and Next bar replace the mockup's own. Strings come from step.data.
+   v2 (Haresh, 14 Oct): one fixed page, "The Ledger", no city paper to choose and no name or title fields; the reviewer
+   types the headline, then the quote. Saved as { headline, quote }. */
+
+/* ===== page-specific frame overrides (stage frame, 440 px side column; the height is the preview's) ===== */
+.c-frame.stage { width: 1100px; }
+.c-frame.stage .c-body { grid-template-columns: 440px 1fr; }
+.c-frame.stage .c-side { padding: 26px 32px 0 36px; min-height: 0; }
+.c-frame.stage .c-side .c-q { font-size: 25px; line-height: 31px; }
+.c-frame.stage .c-stage {
+  padding: 0; align-items: center; justify-content: center; position: relative;
+  background: radial-gradient(520px 420px at 50% 46%, rgba(255,255,255,0.55), transparent 70%), var(--marble);
+}
+
+/* ===== the question band: one band, re-drawn for the quote step; its height is held so nothing below jumps ===== */
+.pv-band .c-q { margin: 0; }
+/* the preview note explains the quote gate; once the quote is open it has done its job */
+body.q-open .pv-band .pv-note { display: none; }
+.pv-band.swap { animation: bandIn 260ms ease both; }
+@keyframes bandIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* ===== the inputs ===== */
+.fields { margin-top: 20px; display: flex; flex-direction: column; gap: 13px; }
+.fld { display: flex; flex-direction: column; gap: 6px; }
+.fld[hidden] { display: none; }
+.fld.enter { animation: rise 280ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.lab { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: var(--ink-2); }
+.lab .opt { font-weight: 400; letter-spacing: 0.02em; text-transform: none; font-size: 12px; color: var(--muted); }
+.count { font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--muted); opacity: 0; transition: opacity 150ms; }
+.count.on { opacity: 1; }
+.count.over { color: var(--amber); }
+.inp {
+  width: 100%; font-family: var(--font-text); font-size: 16px; line-height: 22px; color: var(--ink);
+  background: var(--ground); border: 1px solid #CFCAC1; border-radius: 2px; padding: 9px 12px;
+  outline: none; resize: none; display: block;
+  box-shadow: 0 1px 0 rgba(13,12,11,0.03);
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.inp::placeholder { color: var(--disabled-ink); font-style: italic; }
+.inp:hover { border-color: var(--rule); }
+.inp:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(20,35,59,0.12); }
+textarea.inp { overflow: hidden; }
+textarea.inp.scroll { overflow-y: auto; }
+
+/* ===== the newspaper page (designed at 600x742, scaled to fit) ===== */
+.np-win { position: relative; overflow: hidden; flex: none; }
+.np-win.lift { box-shadow: 0 1px 0 rgba(13,12,11,0.06), 0 2px 4px rgba(13,12,11,0.05), 0 18px 40px rgba(13,12,11,0.14); }
+.np {
+  position: absolute; left: 0; top: 0; width: 600px; height: 742px; transform-origin: 0 0;
+  background: var(--newsprint); color: #171513; padding: 20px 30px 12px;
+  display: flex; flex-direction: column; overflow: hidden;
+  transition: transform 420ms cubic-bezier(.2,.7,.2,1);
+  font-family: var(--font-text);
+}
+.np::before { /* the faintest newsprint tooth */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background: repeating-linear-gradient(90deg, rgba(120,100,60,0.025) 0 1px, transparent 1px 3px);
+}
+.np.arrive { animation: arrive 420ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes arrive { from { opacity: 0; } to { opacity: 1; } }
+
+.np-top { display: grid; grid-template-columns: 74px 1fr 74px; align-items: center; gap: 10px; height: 62px; }
+.np-ear { font-family: var(--font-ui); font-size: 9.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+  line-height: 13px; color: #2b2824; border-top: 1px solid #171513; border-bottom: 1px solid #171513; padding: 5px 0; text-align: center; }
+.np-mast { text-align: center; white-space: nowrap; overflow: hidden; }
+.np-mast span { font-family: var(--font-display); font-weight: 500; font-size: 46px; line-height: 1; letter-spacing: -0.005em;
+  font-variation-settings: "opsz" 96; display: inline-block; }
+.np-mast.two { white-space: normal; }
+.np-mast.two span { line-height: 0.98; text-wrap: balance; max-width: 100%; }
+.np-rule2 { margin-top: 8px; border-top: 1px solid #171513; height: 6px; position: relative; }
+.np-rule2::after { content: ""; position: absolute; left: 0; right: 0; top: 2px; height: 3px; background: #171513; }
+.np-folio { display: flex; justify-content: center; font-family: var(--font-text); font-size: 12px; letter-spacing: 0.02em;
+  color: #3a3631; padding: 6px 0 6px; border-bottom: 1px solid #171513; }
+.np-kicker { margin-top: 12px; font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: 0.2em; color: var(--harvest);
+  display: flex; align-items: center; gap: 8px; }
+.np-kicker::after { content: ""; width: 26px; height: 1px; background: var(--harvest); }
+.np-hlz { position: relative; margin-top: 6px; min-height: 136px; }
+.np-hl { font-family: var(--font-display); font-weight: 500; line-height: 1.06; letter-spacing: -0.012em;
+  text-wrap: balance; overflow-wrap: anywhere; font-variation-settings: "opsz" 72; margin: 0; color: #12100e; }
+.np-hlz .ph { display: none; position: absolute; inset: 0; border: 1.5px dashed #a59d90; border-radius: 2px;
+  align-items: center; justify-content: center; font-family: var(--font-display); font-style: italic; font-weight: 500;
+  font-size: 44px; color: #a59d90; }
+.np-hlz.empty .ph { display: flex; }
+.np-hlz.empty .np-hl { visibility: hidden; }
+.np-sep { margin-top: 12px; border-top: 1px solid #171513; flex: none; }
+
+.np-lower { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 196px; gap: 0; margin-top: 12px; }
+.np-main { padding-right: 14px; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.np-side { padding-left: 14px; border-left: 1px solid #b9b1a4; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.np-pic { height: 158px; flex: none; border: 1px solid #2a2622; background: #f6f2e9; overflow: hidden; }
+.np-pic svg { display: block; width: 100%; height: 100%; }
+.np-body { margin-top: 10px; flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; overflow: hidden; }
+.np-col { padding: 0 9px; border-left: 1px solid #cfc7b9; overflow: hidden; }
+.np-col:first-child { padding-left: 0; border-left: 0; }
+.np-col:last-child { padding-right: 0; }
+.np-dlrow { display: flex; align-items: baseline; gap: 4px; margin: 0 0 4px; }
+.np-dlrow i { flex: 1; min-width: 0; height: 4.5px; border-radius: 1px; background: rgba(23,21,19,0.15); }
+.bars { display: flex; flex-direction: column; gap: 5.5px; padding-top: 2px; }
+.bars i { display: block; height: 4.5px; border-radius: 1px; background: rgba(23,21,19,0.15); }
+.bars i.para { margin-top: 4px; }
+.np-quote { flex: none; border: 1px solid #171513; padding: 14px 13px 12px; position: relative; background: rgba(255,255,255,0.28); }
+.np-quote::before { content: ""; position: absolute; left: 3px; right: 3px; top: 3px; bottom: 3px; border: 0.5px solid rgba(23,21,19,0.35); pointer-events: none; }
+.np-qt { margin: 0; font-family: var(--font-text); font-style: italic; font-weight: 400; color: #171513; overflow-wrap: anywhere;
+  font-variation-settings: "opsz" 20; }
+.np-qt.ph { color: #a59d90; }
+.np-by { margin-top: 10px; padding-top: 8px; border-top: 1px solid #171513; font-family: var(--font-ui); font-size: 10.5px; line-height: 14px;
+  letter-spacing: 0.02em; color: #2b2824; }
+.np-by b { font-weight: 600; }
+.np-second { margin-top: 14px; flex: 1; min-height: 0; overflow: hidden; }
+.np-second .hb { display: block; height: 9px; background: rgba(23,21,19,0.2); border-radius: 1px; margin-bottom: 5px; }
+.np-second .bars { margin-top: 8px; }
+.np-teasers { flex: none; margin-top: 12px; border-top: 3px double #171513; padding-top: 9px; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.np-teaser { display: grid; grid-template-columns: 54px 1fr; gap: 10px; padding-right: 14px; align-items: start; }
+.np-teaser + .np-teaser { padding: 0 0 0 14px; border-left: 1px solid #b9b1a4; }
+.np-teaser .tb { height: 38px; border: 1px solid #b9b1a4;
+  background: repeating-linear-gradient(135deg, rgba(23,21,19,0.10) 0 1px, transparent 1px 4px); }
+.np-teaser .kb { display: block; width: 46px; height: 4px; background: rgba(138,97,22,0.45); margin: 2px 0 6px; }
+.np-teaser .hb { display: block; height: 7px; background: rgba(23,21,19,0.2); margin-bottom: 4px; border-radius: 1px; }
+.np-foot { flex: none; margin-top: 9px; padding-top: 6px; border-top: 1px solid #b9b1a4; text-align: center;
+  font-family: var(--font-ui); font-size: 8.5px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b655c; }
+
+/* ===== smallest laptop (1280x650): tighten the side column ===== */
+@media (min-width: 701px) and (max-height: 760px) {
+  .c-frame.stage .c-side { padding-top: 18px; }
+  .c-frame.stage .c-side .c-q { font-size: 22px; line-height: 27px; }
+  .c-bridge { font-size: 17px; line-height: 21px; margin-bottom: 4px; }
+  .c-bridge::before { margin-top: 10px; }
+  .c-i { font-size: 15px; line-height: 19px; margin-top: 6px; }
+  .c-note { font-size: 13px; line-height: 17px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; }
+  .fields { margin-top: 12px; gap: 8px; }
+  .fld { gap: 4px; }
+  .inp { font-size: 15px; line-height: 20px; padding: 7px 11px; }
+  .c-frame.stage .c-next-bar { padding: 8px 36px 10px; }
+}
+
+/* ===== phone ===== */
+.ph-only { display: none; }
+@media (max-width: 700px) {
+  .c-frame.stage .c-side { display: contents; }
+  .pv-band { order: 1; padding: 14px 20px 0; flex: none; }
+  .c-frame.stage .c-stage { order: 2; flex: none; padding: 12px 20px 0; background: transparent; justify-content: flex-start; }
+  .fields { order: 3; margin-top: 0; padding: 12px 20px 0; gap: 10px; flex: none; }
+  .c-bridge { font-size: 16px; line-height: 20px; margin-bottom: 4px; }
+  .c-bridge::before { margin-top: 9px; }
+  .c-frame.stage .c-side .c-q { font-size: 21px; line-height: 26px; }
+  .c-i { font-size: 14px; line-height: 19px; margin-top: 5px; }
+  .c-note { font-size: 12.5px; line-height: 16px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; }
+  .lab { font-size: 11px; }
+  .lab .opt { font-size: 11px; }
+  .inp { font-size: 16px; line-height: 21px; padding: 8px 11px; }
+  .fld { gap: 4px; }
+  .np-win { box-shadow: 0 1px 0 rgba(13,12,11,0.06), 0 10px 24px rgba(13,12,11,0.10); border-radius: 1px; transition: height 420ms cubic-bezier(.2,.7,.2,1); }
+  .np-win.zoomed { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 34px); mask-image: linear-gradient(90deg, transparent 0, #000 34px); }
+  .ph-only { display: block; }
+  .dk-only { display: none !important; }
+  /* one step per view */
+  body.s3 .pv-band { display: none; }
+  .pv-band .pv-note { display: none; }   /* phone: Next walks the three views, and the hint rides inside it */
+  body.s1 #fQuote, body.s2 #fHead, body.s3 .fields { display: none; }
+  body.s3 .c-frame.stage .c-stage { flex: 1; justify-content: center; padding: 14px 20px 0; }
+}
+</style>
+</head>
+<body class="s1">
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'newspaper') { CeresNav.go(step.id); return }
+  const S = window.CERES_SCRIPT
+  const D = step.data
+  const PG = D.page
+  const ui = CeresPreview.mount(step, { stage: true })
+  ui.band.setAttribute('aria-live', 'polite')
+  const esc = ui.esc
+  const fill = CeresNav.fill
+
+  // ---------------- data (script.js) ----------------
+  const MARKS = D.marks                      // the quote marks, “ ” (one fixed English-language page)
+  const HL_SIZES = [64, 56, 48, 42]          // the ladder (page units; the page is 600x742 and scaled to fit)
+  const HL_FALLBACK = [36, 32]               // only if the hard limit would still break four lines at 42
+  const HL_MAX_LINES = 4, HL_MAX_H = 180     // four lines of 42 at line-height 1.06
+  const Q_SIZES = [19, 17, 15.5, 14, 12.5]
+  const L = D.limits
+  const MIN = L.headline.min
+  const nb = (s) => String(s).replace(/ · /g, ' · ')
+
+  // ---------------- the side column: fields under the band ----------------
+  const fieldsEl = document.createElement('div')
+  fieldsEl.className = 'fields'
+  fieldsEl.innerHTML = `
+    <div class="fld" id="fHead">
+      <label class="lab" for="headline"><span>${esc(D.labels.headline)}</span><span class="count" id="hCount"></span></label>
+      <textarea class="inp" id="headline" rows="1" maxlength="${L.headline.hard}" dir="auto" autocomplete="off" autocapitalize="sentences" spellcheck="true" placeholder="${esc(PG.headlinePlaceholder)}"></textarea>
+    </div>
+    <div class="fld" id="fQuote" hidden>
+      <label class="lab" for="quote"><span>${esc(D.labels.quote)}</span><span class="count" id="qCount"></span></label>
+      <textarea class="inp" id="quote" rows="2" maxlength="${L.quote.hard}" dir="auto" autocomplete="off" autocapitalize="sentences" placeholder="${esc(PG.quotePlaceholder)}"></textarea>
+    </div>`
+  ui.side.appendChild(fieldsEl)
+
+  // ---------------- the page ----------------
+  const ear = (t) => esc(t).replace(' ', '<br>')
+  ui.obj.innerHTML = `
+    <div class="np-win" id="win" aria-hidden="true">
+      <div class="np" id="np">
+        <div class="np-top">
+          <div class="np-ear">${ear(PG.ears[0])}</div>
+          <div class="np-mast"><span id="mast">${esc(PG.masthead)}</span></div>
+          <div class="np-ear">${ear(PG.ears[1])}</div>
+        </div>
+        <div class="np-rule2"></div>
+        <div class="np-folio" id="folio">${esc(nb(PG.folio))}</div>
+        <div class="np-kicker">${esc(PG.kicker)}</div>
+        <div class="np-hlz empty" id="hlz"><h3 class="np-hl" id="hl"></h3><div class="ph">${esc(PG.headlinePlaceholder)}</div></div>
+        <div class="np-sep"></div>
+        <div class="np-lower" id="lower">
+          <div class="np-main">
+            <div class="np-pic" id="pic"></div>
+            <div class="np-body" id="body"></div>
+          </div>
+          <div class="np-side">
+            <div class="np-quote" id="qbox"><p class="np-qt ph" id="qt">${esc(PG.quotePlaceholder)}</p><div class="np-by" id="by">${esc(PG.byline)}</div></div>
+            <div class="np-second" id="second"></div>
+          </div>
+        </div>
+        <div class="np-teasers" id="teasers"></div>
+        <div class="np-foot">${esc(PG.footer)}</div>
+      </div>
+    </div>`
+
+  const $ = (id) => document.getElementById(id)
+  const els = {
+    headline: $('headline'), quote: $('quote'),
+    hCount: $('hCount'), fHead: $('fHead'), qCount: $('qCount'), fQuote: $('fQuote'),
+    win: $('win'), np: $('np'), mast: $('mast'), folio: $('folio'),
+    hlz: $('hlz'), hl: $('hl'), qt: $('qt'), qbox: $('qbox'), by: $('by'), lower: $('lower'),
+  }
+  const phoneMQ = window.matchMedia('(max-width: 700px)')
+  const isPhone = () => phoneMQ.matches
+
+  // forced: the reviewer pressed Next before the headline reached 10 characters, so the quote step opens anyway
+  const state = { step: 1, quoteShown: false, finalReady: false, forced: false }
+  ui.previewNote('In the survey the quote opens once the headline has 10 or more characters; here Next opens it.')
+
+  // ---------------- static page furniture (mockup code, unchanged) ----------------
+  function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296) }
+  function bars(n, seed, opts) {
+    const r = rng(seed), o = opts || {}
+    let h = ''
+    for (let i = 0; i < n; i++) {
+      const paraEnd = o.para && i > 0 && i % o.para === o.para - 1
+      const w = paraEnd ? 35 + r() * 35 : 86 + r() * 14
+      const para = o.para && i > 0 && i % o.para === 0 ? ' class="para"' : ''
+      h += `<i${para} style="width:${w.toFixed(1)}%"></i>`
+    }
+    return `<div class="bars">${h}</div>`
+  }
+  // One generic engraved street: low buildings, shutters, awnings, lamps and two trees. No landmarks, signs or people.
+  function streetScene() {
+    const W = 330, H = 158, base = 120, ink = '#1d1a17'
+    const r = rng(7)
+    let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">`
+    s += `<defs>
+      <pattern id="hx" width="2.6" height="2.6" patternUnits="userSpaceOnUse" patternTransform="rotate(38)"><line x1="0" y1="0" x2="0" y2="2.6" stroke="${ink}" stroke-width="0.55"/></pattern>
+      <pattern id="hh" width="3" height="2.2" patternUnits="userSpaceOnUse"><line x1="0" y1="0.5" x2="3" y2="0.5" stroke="${ink}" stroke-width="0.45"/></pattern>
+      <pattern id="hc" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(-40)"><line x1="0" y1="0" x2="0" y2="2" stroke="${ink}" stroke-width="0.6"/></pattern>
+    </defs>`
+    s += `<rect width="${W}" height="${H}" fill="#f6f2e9"/>`
+    // sky: engraved horizontal strokes, thinning towards the horizon
+    for (let y = 3, k = 0; y < 62; y += 2.6 + k * 0.12, k++) {
+      const op = Math.max(0.06, 0.42 - k * 0.018)
+      const x0 = r() * 8, x1 = W - r() * 8
+      s += `<line x1="${x0.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${ink}" stroke-width="0.45" opacity="${op.toFixed(2)}"/>`
+    }
+    // distant row (pale) behind
+    let d = `M0 ${base - 52}`
+    let x = 0
+    while (x < W) { const w = 14 + r() * 22, h = 44 + r() * 26; d += ` L${x.toFixed(1)} ${(base - h).toFixed(1)} L${(x + w).toFixed(1)} ${(base - h).toFixed(1)}`; x += w }
+    d += ` L${W} ${base} L0 ${base} Z`
+    s += `<path d="${d}" fill="url(#hh)" opacity="0.35" stroke="${ink}" stroke-width="0.4"/>`
+    // the main row of buildings
+    const B = [
+      { w: 52, h: 82, f: 4, c: 3, shop: 1 }, { w: 40, h: 64, f: 3, c: 2, shop: 0, shade: 1 },
+      { w: 58, h: 92, f: 5, c: 4, shop: 1 }, { w: 34, h: 58, f: 3, c: 2, shop: 0 },
+      { w: 54, h: 78, f: 4, c: 3, shop: 1, shade: 1 }, { w: 44, h: 68, f: 3, c: 3, shop: 0 }, { w: 60, h: 88, f: 5, c: 4, shop: 1 },
+    ]
+    x = -6
+    for (const b of B) {
+      const top = base - b.h
+      s += `<rect x="${x}" y="${top}" width="${b.w}" height="${b.h}" fill="#f6f2e9" stroke="${ink}" stroke-width="0.9"/>`
+      if (b.shade) s += `<rect x="${x}" y="${top}" width="${b.w}" height="${b.h}" fill="url(#hx)" opacity="0.38"/>`
+      // cornice and parapet
+      s += `<line x1="${x - 1.5}" y1="${top + 3}" x2="${x + b.w + 1.5}" y2="${top + 3}" stroke="${ink}" stroke-width="0.8"/>`
+      s += `<line x1="${x - 1.5}" y1="${top + 5}" x2="${x + b.w + 1.5}" y2="${top + 5}" stroke="${ink}" stroke-width="0.4"/>`
+      // windows
+      const shopH = b.shop ? 24 : 0
+      const fh = (b.h - 10 - shopH - 6) / b.f
+      const cw = b.w / b.c
+      for (let f = 0; f < b.f; f++) {
+        for (let c = 0; c < b.c; c++) {
+          const wx = x + c * cw + cw * 0.3, wy = top + 9 + f * fh, ww = cw * 0.4, wh = fh * 0.62
+          s += `<rect x="${wx.toFixed(1)}" y="${wy.toFixed(1)}" width="${ww.toFixed(1)}" height="${wh.toFixed(1)}" fill="url(#hc)" stroke="${ink}" stroke-width="0.5"/>`
+          s += `<line x1="${(wx - 1).toFixed(1)}" y1="${(wy - 1.4).toFixed(1)}" x2="${(wx + ww + 1).toFixed(1)}" y2="${(wy - 1.4).toFixed(1)}" stroke="${ink}" stroke-width="0.5"/>`
+          if (f === 1 && c % 2 === 0) { // a small balcony rail
+            const by = wy + wh + 1
+            s += `<line x1="${(wx - 2).toFixed(1)}" y1="${by.toFixed(1)}" x2="${(wx + ww + 2).toFixed(1)}" y2="${by.toFixed(1)}" stroke="${ink}" stroke-width="0.6"/>`
+            for (let k = 0; k <= 4; k++) { const bx = wx - 2 + k * (ww + 4) / 4; s += `<line x1="${bx.toFixed(1)}" y1="${(by - 3).toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${ink}" stroke-width="0.35"/>` }
+            s += `<line x1="${(wx - 2).toFixed(1)}" y1="${(by - 3).toFixed(1)}" x2="${(wx + ww + 2).toFixed(1)}" y2="${(by - 3).toFixed(1)}" stroke="${ink}" stroke-width="0.35"/>`
+          }
+        }
+      }
+      if (b.shop) { // shopfront with a striped awning (no lettering)
+        const sy = base - shopH
+        s += `<line x1="${x}" y1="${sy}" x2="${x + b.w}" y2="${sy}" stroke="${ink}" stroke-width="0.7"/>`
+        const ax0 = x + 3, ax1 = x + b.w - 3, ay = sy + 4
+        s += `<path d="M${ax0} ${ay} L${ax1} ${ay} L${ax1 + 3} ${ay + 7} L${ax0 - 3} ${ay + 7} Z" fill="#f6f2e9" stroke="${ink}" stroke-width="0.6"/>`
+        for (let k = 1; k < 8; k++) { const tx = ax0 + (ax1 - ax0) * k / 8; const bx = ax0 - 3 + (ax1 - ax0 + 6) * k / 8; s += `<line x1="${tx.toFixed(1)}" y1="${ay}" x2="${bx.toFixed(1)}" y2="${ay + 7}" stroke="${ink}" stroke-width="0.4"/>` }
+        s += `<rect x="${x + 6}" y="${ay + 10}" width="${b.w - 12}" height="${base - ay - 10}" fill="url(#hc)" opacity="0.7" stroke="${ink}" stroke-width="0.5"/>`
+        s += `<line x1="${x + b.w / 2}" y1="${ay + 10}" x2="${x + b.w / 2}" y2="${base}" stroke="${ink}" stroke-width="0.5"/>`
+      } else { // an arched door
+        const dx = x + b.w / 2 - 5
+        s += `<path d="M${dx} ${base} L${dx} ${base - 13} A5 5 0 0 1 ${dx + 10} ${base - 13} L${dx + 10} ${base}" fill="url(#hc)" stroke="${ink}" stroke-width="0.6"/>`
+      }
+      x += b.w
+    }
+    // pavement, kerb and the street running away
+    s += `<rect x="0" y="${base}" width="${W}" height="${H - base}" fill="#f6f2e9"/>`
+    s += `<line x1="0" y1="${base}" x2="${W}" y2="${base}" stroke="${ink}" stroke-width="1"/>`
+    s += `<line x1="0" y1="${base + 9}" x2="${W}" y2="${base + 9}" stroke="${ink}" stroke-width="0.8"/>`
+    for (let k = 0; k < 22; k++) { const px = k * 16 + 4; s += `<line x1="${px}" y1="${base + 1}" x2="${px - 3}" y2="${base + 9}" stroke="${ink}" stroke-width="0.35" opacity="0.6"/>` }
+    for (let y = base + 12; y < H; y += 2.4) s += `<line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${ink}" stroke-width="0.4" opacity="${(0.12 + (y - base) * 0.008).toFixed(2)}"/>`
+    for (let k = -4; k <= 4; k++) { const bx = W / 2 + k * 70; s += `<line x1="${W / 2 + k * 14}" y1="${base + 10}" x2="${bx}" y2="${H}" stroke="${ink}" stroke-width="0.4" opacity="0.35"/>` }
+    // lamps
+    for (const lx of [92, 236]) {
+      s += `<line x1="${lx}" y1="${base + 6}" x2="${lx}" y2="${base - 46}" stroke="${ink}" stroke-width="1.1"/>`
+      s += `<path d="M${lx - 4} ${base - 46} L${lx + 4} ${base - 46} L${lx + 2.5} ${base - 55} L${lx - 2.5} ${base - 55} Z" fill="#f6f2e9" stroke="${ink}" stroke-width="0.7"/>`
+      s += `<path d="M${lx - 3.5} ${base - 55} L${lx} ${base - 59} L${lx + 3.5} ${base - 55}" fill="none" stroke="${ink}" stroke-width="0.7"/>`
+      s += `<line x1="${lx - 3}" y1="${base + 6}" x2="${lx + 3}" y2="${base + 6}" stroke="${ink}" stroke-width="1"/>`
+    }
+    // two street trees: engraved foliage of small arcs
+    for (const [tx, ts] of [[36, 1], [292, 1.12]]) {
+      s += `<path d="M${tx} ${base + 6} L${tx} ${base - 22 * ts}" stroke="${ink}" stroke-width="1.6"/>`
+      const cx = tx, cy = base - 36 * ts, R = 17 * ts
+      let g = ''
+      for (let k = 0; k < 46; k++) {
+        const a = r() * Math.PI * 2, rr = Math.sqrt(r()) * R
+        const px = cx + Math.cos(a) * rr * 1.1, py = cy + Math.sin(a) * rr * 0.85
+        g += `<path d="M${(px - 2.4).toFixed(1)} ${py.toFixed(1)} q2.4 -2.8 4.8 0" fill="none" stroke="${ink}" stroke-width="0.55"/>`
+      }
+      s += `<ellipse cx="${cx}" cy="${cy}" rx="${R * 1.15}" ry="${R * 0.92}" fill="#f6f2e9" opacity="0.9"/>` + g
+    }
+    s += `</svg>`
+    return s
+  }
+
+  function buildFurniture() {
+    const body = $('body')
+    body.innerHTML =
+      `<div class="np-col"><div class="np-dlrow"><i></i></div>${bars(28, 11, { para: 9 })}</div>` +
+      `<div class="np-col">${bars(30, 23, { para: 8 })}</div>` +
+      `<div class="np-col">${bars(30, 37, { para: 10 })}</div>`
+    $('second').innerHTML = `<span class="hb" style="width:96%"></span><span class="hb" style="width:62%"></span>${bars(22, 51, { para: 7 })}`
+    $('teasers').innerHTML = [61, 73].map((s, i) =>
+      `<div class="np-teaser"><div class="tb"></div><div><span class="kb"></span><span class="hb" style="width:${i ? 88 : 94}%"></span><span class="hb" style="width:${i ? 58 : 66}%"></span></div></div>`).join('')
+    $('pic').innerHTML = streetScene()
+  }
+
+  // ---------------- the masthead ----------------
+  // v2: one fixed page. The masthead, folio and byline are printed as they are; there is no paper or city to choose.
+  // One line from 46 down to 30 px, then two balanced lines (kept from v1; "The Ledger" sits on one line at 46 px).
+  function fitMast() {
+    const box = els.mast.parentElement, m = els.mast
+    box.classList.remove('two')
+    let size = 46
+    m.style.fontSize = size + 'px'
+    while (m.offsetWidth > box.clientWidth && size > 30) { size -= 2; m.style.fontSize = size + 'px' }
+    if (m.offsetWidth <= box.clientWidth) return
+    box.classList.add('two')
+    size = 30
+    m.style.fontSize = size + 'px'
+    while ((m.offsetWidth > box.clientWidth || m.offsetHeight > 60) && size > 16) { size -= 1; m.style.fontSize = size + 'px' }
+  }
+
+  // ---------------- text helpers ----------------
+  const QUOTE_CHARS = '"\'“”„‟«»‘’‚‛‹›`´'
+  const qcls = QUOTE_CHARS.replace(/[\\\]^-]/g, '\\$&')
+  const stripQuotes = (s) => s.replace(new RegExp(`^[\\s${qcls}]+`), '').replace(new RegExp(`[\\s${qcls}]+$`), '')
+  const clean = (s) => s.replace(/[\r\n]+/g, ' ').replace(/ {2,}/g, ' ')
+  function collapseField(el) {
+    const v = el.value, c = clean(v)
+    if (c === v) return
+    const pos = el.selectionStart, before = clean(v.slice(0, pos))
+    el.value = c
+    el.setSelectionRange(before.length, before.length)
+  }
+  function autoGrow(el, maxLines) {
+    const cs = getComputedStyle(el), lh = parseFloat(cs.lineHeight)
+    const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 2
+    el.style.height = 'auto'
+    const lines = Math.max(+el.getAttribute('rows') || 1, Math.round((el.scrollHeight - pad + 2) / lh))
+    const shown = Math.min(lines, maxLines)
+    el.style.height = (shown * lh + pad) + 'px'
+    el.classList.toggle('scroll', lines > maxLines)
+  }
+
+  // the quote field grows to five lines (four on a phone and on the 650 px laptop, where the side column is shorter)
+  const shortMQ = window.matchMedia('(min-width: 701px) and (max-height: 720px)')
+  const quoteLines = () => (isPhone() || shortMQ.matches ? 4 : 5)
+
+  // ---------------- the page mirrors every keystroke ----------------
+  function fitHeadline() {
+    const hl = els.hl
+    const lh = (px) => px * 1.06
+    const list = HL_SIZES.concat(HL_FALLBACK)
+    for (let i = 0; i < list.length; i++) {
+      const px = list[i]
+      hl.style.fontSize = px + 'px'
+      const lines = Math.round(hl.offsetHeight / lh(px))
+      const maxLines = px >= 64 ? 2 : px >= 48 ? 3 : HL_MAX_LINES
+      if ((lines <= maxLines && hl.offsetHeight <= HL_MAX_H + 1) || i === list.length - 1) return px
+    }
+  }
+  function fitQuote() {
+    const lower = els.lower.clientHeight
+    for (let i = 0; i < Q_SIZES.length; i++) {
+      const px = Q_SIZES[i]
+      els.qt.style.fontSize = px + 'px'
+      els.qt.style.lineHeight = (px * 1.36).toFixed(1) + 'px'
+      if (els.qbox.offsetHeight <= Math.min(lower - 24, 310)) break   // the quote may push the filler story down to a sliver
+    }
+    // a filler story with no room for its text would read as a stray grey bar: drop it instead
+    const second = $('second')
+    second.style.visibility = ''
+    if (second.clientHeight < 34) second.style.visibility = 'hidden'
+  }
+  function renderPage() {
+    const h = clean(els.headline.value).replace(/^ /, '')
+    els.hl.textContent = h
+    els.hlz.classList.toggle('empty', h.length === 0)
+    if (h.length) fitHeadline()
+
+    const q = stripQuotes(clean(els.quote.value))
+    if (q.length) {
+      const [o, c] = MARKS
+      els.qt.textContent = o + q + c
+      els.qt.classList.remove('ph')
+    } else { els.qt.textContent = PG.quotePlaceholder; els.qt.classList.add('ph') }
+
+    els.by.textContent = PG.byline      // "— J.P. Morgan Private Bank": no name or title in v2
+    fitQuote()
+  }
+
+  // ---------------- side column state ----------------
+  function counts() {
+    return { h: clean(els.headline.value).trim().length, q: stripQuotes(clean(els.quote.value)).trim().length }
+  }
+  function counter(el, n, soft, from) {
+    el.textContent = fill(n > soft ? D.counterLong : D.counter, { n, soft })
+    el.classList.toggle('on', n >= from)
+    el.classList.toggle('over', n > soft)
+  }
+  function renderCounters() {
+    counter(els.hCount, els.headline.value.length, L.headline.soft, L.headline.counterFrom || Math.round(L.headline.soft * 0.8))
+    counter(els.qCount, els.quote.value.length, L.quote.soft, L.quote.counterFrom || Math.round(L.quote.soft * 0.8))
+  }
+  function showQuote(on, animate) {
+    if (on === state.quoteShown) return
+    state.quoteShown = on
+    els.fQuote.hidden = !on
+    els.fQuote.classList.remove('enter'); if (on && animate) { void els.fQuote.offsetWidth; els.fQuote.classList.add('enter') }
+    document.body.classList.toggle('q-open', on)
+    if (on) autoGrow(els.quote, quoteLines())
+    holdBand()
+  }
+
+  // the band: the headline step, then the quote step (bridge "Then a quote from you.") in the same place
+  let bandK = 0
+  function setBandK(k) {
+    if (k === bandK) return
+    bandK = k
+    ui.setBand(D.steps[k])
+    ui.band.classList.remove('swap'); void ui.band.offsetWidth; ui.band.classList.add('swap')
+  }
+  function holdBand() {
+    // both steps share one cell on a laptop, so the fields below never jump: hold the taller band's height
+    const b = ui.band
+    b.style.minHeight = ''
+    if (isPhone()) return
+    const k = bandK
+    ui.setBand(D.steps[1 - k]); const h1 = b.offsetHeight
+    ui.setBand(D.steps[k]); const h0 = b.offsetHeight
+    b.style.minHeight = Math.max(h0, h1) + 'px'
+  }
+  let focused = null
+  function renderBand() {
+    if (isPhone()) { setBandK(state.step === 2 ? 1 : 0); return }
+    const c = counts()
+    const inStep2 = focused === 'quote' || (c.q > 0 && focused !== 'headline')
+    setBandK(state.quoteShown && inStep2 ? 1 : 0)
+  }
+
+  // Next: the survey's own label while incomplete goes beside it ("In the survey: Write your headline"); Next works anyway
+  function missing() {
+    const c = counts()
+    const headMissing = c.h === 0 ? D.missing.headline : c.h < MIN ? fill(D.missing.headlineShort, { n: MIN - c.h }) : null
+    const qMin = L.quote.min
+    const quoteMissing = c.q === 0 ? D.missing.quote : c.q < qMin ? fill(D.missing.quoteShort, { n: qMin - c.q }) : null
+    if (isPhone()) {
+      if (state.step === 1) return headMissing
+      if (state.step === 2) return quoteMissing
+    }
+    return headMissing || quoteMissing
+  }
+  function renderNext() {
+    const m = missing()
+    if (m) ui.status(false, m); else ui.status(true)
+    // on a phone the first two views read "Next"; the whole-page view reads "Send"
+    if (isPhone() && state.step < 3) ui.label(S.ui.next); else ui.label()
+  }
+  function save() {
+    const v = { headline: clean(els.headline.value).trim(), quote: stripQuotes(clean(els.quote.value)).trim() }
+    ui.save(v.headline || v.quote ? v : undefined)
+  }
+  function update(animate) {
+    showQuote(state.forced || counts().h >= MIN || els.quote.value.length > 0 || (isPhone() && state.step >= 2), animate)
+    renderCounters()
+    renderPage()
+    renderBand()
+    renderNext()
+    layout()
+  }
+
+  // ---------------- layout: scale the page; on phone, crop and pan (mockup code) ----------------
+  function layout() {
+    const stage = ui.obj
+    const np = els.np, win = els.win
+    win.classList.remove('zoomed')          // only the phone's step-2 crop is zoomed; every other view shows the page whole
+    if (!isPhone()) {
+      const W = stage.clientWidth - 48, H = stage.clientHeight - 30
+      const s = Math.min(W / 600, H / 742)
+      win.classList.add('lift')
+      win.style.width = (600 * s).toFixed(1) + 'px'
+      win.style.height = (742 * s).toFixed(1) + 'px'
+      np.style.transform = `translate(0px, 0px) scale(${s})`
+      return
+    }
+    win.classList.remove('lift')
+    const W = window.innerWidth - 40
+    if (state.step === 3) {
+      const H = stage.clientHeight - 16
+      const s = Math.min(W / 600, H / 742)
+      win.style.width = (600 * s).toFixed(1) + 'px'
+      win.style.height = (742 * s).toFixed(1) + 'px'
+      np.style.transform = `translate(0px, 0px) scale(${s})`
+      return
+    }
+    const s = W / 600
+    win.style.width = W + 'px'
+    if (state.step === 1) {
+      const y1 = els.hlz.offsetTop + els.hlz.offsetHeight + 22
+      // preview: the banner takes 18 px, so a four-line headline can run out of room; then the crop
+      // scales down (centred) rather than pushing the fields under Next
+      const room = window.innerHeight - win.getBoundingClientRect().top - fieldsEl.offsetHeight - ui.bar.offsetHeight
+      const s1 = y1 * s > room ? Math.max(0.42, room / y1) : s
+      win.style.width = (600 * s1).toFixed(1) + 'px'
+      win.style.height = (y1 * s1).toFixed(1) + 'px'
+      np.style.transform = `translate(0px, 0px) scale(${s1})`
+      return
+    }
+    // Step 2: pan to the picture and the pull quote, and zoom in as far as the free height allows (in steps, so the
+    // camera does not creep while they type), anchored on the quote column.
+    const qTop = els.qbox.offsetTop, qBot = qTop + els.qbox.offsetHeight   // offsets are relative to the page (.np)
+    const y0 = Math.max(0, els.lower.offsetTop - 12)
+    const need = qBot + 14 - y0
+    const bar = ui.bar
+    const room = window.innerHeight - win.getBoundingClientRect().top - fieldsEl.offsetHeight - bar.offsetHeight - 6
+    let z = s
+    for (const st of [0.9, 0.8, 0.7, 0.64]) if (st > s && need * st <= room) { z = st; break }
+    const x0 = z > s ? Math.max(0, 600 - 14 - W / z) : 0
+    const h = z > s ? need * z : Math.min(Math.max(need, 236) * s, Math.max(room, need * s))
+    win.style.height = h.toFixed(1) + 'px'
+    win.classList.toggle('zoomed', z > s)   // a soft left edge: the pan reads as a camera move, not a clipped page
+    np.style.transform = `translate(${(-x0 * z).toFixed(1)}px, ${(-y0 * z).toFixed(1)}px) scale(${z})`
+  }
+
+  let finalT
+  function setStep(n) {
+    state.step = n
+    document.body.classList.remove('s1', 's2', 's3')
+    document.body.classList.add('s' + n)
+    state.finalReady = false
+    clearTimeout(finalT)
+    if (n === 3) finalT = setTimeout(() => { state.finalReady = true; renderNext() }, 2000)
+    update(false)
+    growAll()
+    requestAnimationFrame(layout)
+  }
+  function growAll() { if (els.headline.offsetParent) autoGrow(els.headline, 3); if (els.quote.offsetParent) autoGrow(els.quote, quoteLines()) }
+
+  // ---------------- wiring ----------------
+  function wire() {
+    els.headline.addEventListener('input', () => { collapseField(els.headline); autoGrow(els.headline, 3); update(true); save() })
+    els.headline.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (counts().h >= MIN) { if (isPhone()) { if (state.step === 1) { setStep(2); els.quote.focus({ preventScroll: true }) } } else els.quote.focus() }   // the keyboard is already up: keep it there
+      }
+    })
+    els.quote.addEventListener('input', () => { collapseField(els.quote); autoGrow(els.quote, quoteLines()); update(false); save() })
+    // Enter in the quote (the last field) goes on: Send on a laptop, the whole-page view on a phone
+    els.quote.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ui.goNext() } })
+    for (const k of ['headline', 'quote']) {
+      els[k].addEventListener('focus', () => { focused = k; renderBand() })
+      els[k].addEventListener('blur', () => { focused = null; setTimeout(renderBand, 0) })
+    }
+    // Next always works. Laptop: if the quote step has not opened yet, Next opens it; then Send goes on to the ending.
+    // Phone: Next moves through the three views (headline, quote, whole page), then Send goes on.
+    ui.onNext(() => {
+      if (isPhone()) { if (state.step < 3) { setStep(state.step + 1); return true } return false }
+      if (!state.quoteShown) { state.forced = true; update(true); els.quote.focus({ preventScroll: true }); return true }
+      return false
+    })
+    ui.onBack(() => { if (isPhone() && state.step > 1) { setStep(state.step - 1); return true } return false })
+    phoneMQ.addEventListener('change', () => { setStep(1); holdBand() })
+    window.addEventListener('resize', () => { holdBand(); layout() })
+  }
+
+  // ---------------- the reviewer's own answer ----------------
+  function restore() {
+    const v = ui.load()
+    if (!v || typeof v !== 'object') return
+    els.headline.value = v.headline || ''; els.quote.value = v.quote || ''
+  }
+
+  // ---------------- boot ----------------
+  buildFurniture(); restore(); wire()
+  autoGrow(els.headline, 3)
+  fitMast()
+  update(false)
+  holdBand()
+  els.np.classList.add('arrive')
+  document.fonts.ready.then(() => { growAll(); update(false); holdBand(); layout(); if (!isPhone()) els.headline.focus({ preventScroll: true }) })
+})()
+</script>
+</body>
+</html>

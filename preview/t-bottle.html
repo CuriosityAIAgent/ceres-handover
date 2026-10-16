@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-bottle: 6.4, pour 10 bankers into the team, one per tap, from four title jugs. Ported from The Ascent's bottle
+   (src/v2/render/bottle.tsx, hero/bottle/BottleArt.tsx, JugArt.tsx): the jug flies to the mouth, tips and pours one
+   banker, that layer rises in the jug's colour, the minus takes the last one back, the cap turns on at 10.
+   Page-only CSS; the shared frame is untouched. */
+.c-obj.bt-obj { padding-top: 10px; }
+.bt { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding-bottom: 6px; }
+.bt-main { flex: none; display: flex; align-items: stretch; justify-content: center; gap: 36px; }
+.bt-spacer, .bt-read { width: 170px; flex: none; }
+.bt-read { display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 22px; }
+.bt-n { margin: 0; font-family: var(--font-text); font-weight: 600; font-size: 56px; line-height: 56px; color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
+.bt-n.full { color: var(--forest); }
+.bt-rest { margin: 4px 0 0; font-family: var(--font-ui); font-size: 15px; line-height: 19px; color: var(--muted); }
+.bt-shake { flex: none; }
+.bt-svg { display: block; height: 226px; width: auto; overflow: visible; }
+
+.bt-tray { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.bt-tile { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--rule-soft); border-radius: 4px; background: #fff; box-shadow: inset 0 3px 0 var(--rule-soft); transition: border-color 200ms, box-shadow 200ms; }
+.bt-tile.has { border-color: var(--c); box-shadow: inset 0 3px 0 var(--c); }
+.bt-pour { all: unset; box-sizing: border-box; flex: 1; display: flex; flex-direction: column; align-items: center; padding: 9px 4px 4px; cursor: pointer; transition: transform 120ms; -webkit-tap-highlight-color: transparent; }
+.bt-pour:active { transform: translateY(1px); }
+.bt-pour:focus-visible { outline: 2px solid var(--navy); outline-offset: -3px; }
+.bt-pour[aria-disabled="true"] { cursor: default; }
+.bt-icon { display: block; width: 56px; height: 56px; transition: opacity 200ms, transform 200ms; }
+.bt-ic, .bt-icon svg { display: block; width: 100%; height: 100%; }
+.bt-pour:not([aria-disabled="true"]):hover .bt-icon { transform: translateY(-2px) rotate(-3deg); }
+.bt-icon.lifted { opacity: .18; }
+.bt-lbl { margin-top: 5px; min-height: 36px; display: flex; align-items: flex-start; justify-content: center; text-align: center; font-family: var(--font-ui); font-weight: 600; font-size: 15px; line-height: 18px; letter-spacing: -.01em; color: var(--ink); }
+.bt-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #EAE7E1; }
+.bt-count { padding-left: 12px; font-family: var(--font-ui); font-size: 16px; font-weight: 600; color: #6B6761; font-variant-numeric: tabular-nums; }
+.bt-tile.has .bt-count { color: var(--d); }
+.bt-minus { all: unset; box-sizing: border-box; width: 44px; height: 100%; display: grid; place-items: center; cursor: pointer; transition: opacity 150ms; }
+.bt-minus[disabled] { opacity: 0; cursor: default; }
+.bt-minus:focus-visible { outline: 2px solid var(--navy); outline-offset: -4px; }
+.bt-minus svg { width: 22px; height: 22px; }
+.bt-ghosts { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
+.bt-ghost { position: absolute; transform-origin: 93.75% 13.3%; filter: drop-shadow(0 6px 8px rgba(13,12,11,.18)); }
+.bt-ghost svg { display: block; width: 100%; height: 100%; }
+
+/* motion, as BOTTLE_CSS */
+.bt-slide { transition: transform 320ms cubic-bezier(.3,.7,.3,1); }
+.bt-rise { transform-box: fill-box; transform-origin: 50% 100%; animation: btRise 540ms cubic-bezier(.25,.8,.35,1) 600ms both; }
+@keyframes btRise { 0% { transform: scaleY(0) } 65% { transform: scaleY(1.09) } 84% { transform: scaleY(.97) } 100% { transform: scaleY(1) } }
+.bt-stream { animation: btStream 1150ms linear both; }
+@keyframes btStream { 0%, 44% { stroke-dashoffset: 100 } 54% { stroke-dashoffset: 0 } 80% { stroke-dashoffset: 0 } 91%, 100% { stroke-dashoffset: -100 } }
+.bt-splash { transform-box: fill-box; transform-origin: center; animation: btSplash 560ms ease-out 580ms both; }
+@keyframes btSplash { 0% { opacity: 0; transform: scale(.2, .5) } 25% { opacity: .75 } 100% { opacity: 0; transform: scale(1.7, 1.3) } }
+.bt-settle { transform-box: fill-box; transform-origin: center; animation: btSettle 820ms ease-out 1080ms both; }
+@keyframes btSettle { 0% { transform: scaleY(1) } 22% { transform: scaleY(1.7) } 50% { transform: scaleY(.6) } 76% { transform: scaleY(1.2) } 100% { transform: scaleY(1) } }
+.bt-cap { animation: btCap 480ms cubic-bezier(.3,1.5,.55,1) 1150ms both; }
+.bt-cap.now { animation-delay: 0ms; }
+@keyframes btCap { 0% { transform: translateY(-34px); opacity: 0 } 35% { opacity: 1 } 100% { transform: translateY(0); opacity: 1 } }
+.bt-pop { display: inline-block; animation: btPop 380ms cubic-bezier(.3,1.4,.5,1); }
+@keyframes btPop { 0% { transform: scale(1.45) } 100% { transform: scale(1) } }
+.bt-hint { transform-origin: 50% 90%; animation: btHint 620ms cubic-bezier(.3,.7,.3,1) both; }
+@keyframes btHint { 0%, 100% { transform: none } 40% { transform: translateY(-7px) rotate(10deg) } 70% { transform: translateY(0) rotate(-2deg) } }
+
+@media (min-width: 701px) and (max-height: 720px) {
+  .bt { gap: 10px; }
+  .bt-svg { height: 164px; }
+  .bt-read { padding-bottom: 12px; }
+  .bt-n { font-size: 46px; line-height: 46px; }
+  .bt-icon { width: 44px; height: 44px; }
+  .bt-pour { padding-top: 6px; }
+  .bt-lbl { min-height: 34px; font-size: 14px; line-height: 17px; }
+  .bt-bar { height: 36px; }
+}
+@media (max-width: 700px) {
+  .c-obj.bt-obj { padding-top: 8px; }
+  .bt { gap: 12px; }
+  .bt-main { gap: 16px; }
+  .bt-spacer { display: none; }
+  .bt-read { width: 124px; padding-bottom: 10px; }
+  .bt-n { font-size: 44px; line-height: 44px; }
+  .bt-rest { font-size: 14px; }
+  .bt-svg { height: 196px; }
+  .bt-tray { gap: 6px; }
+  .bt-icon { width: 40px; height: 40px; }
+  .bt-pour { padding: 7px 2px 3px; }
+  .bt-lbl { min-height: 28px; font-size: 11.5px; line-height: 14px; letter-spacing: -.015em; }
+  .bt-bar { height: 36px; }
+  .bt-count { padding-left: 7px; font-size: 14px; }
+  .bt-minus { width: 34px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'bottle') { CeresNav.go(step.id); return }
+  const P = window.CeresPreview
+  const esc = P.esc
+  const D = step.data
+  const NS = 'http://www.w3.org/2000/svg'
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const ui = P.mount(step, { objClass: 'bt-obj' })
+
+  const total = D.total
+  // The Ascent's clay looks (hero/bottle/jugs.ts), one per title, each with its own pattern so the mix reads without colour
+  const LOOKS = [
+    { color: '#2F5D4A', light: '#6E9582', dark: '#1F4B3A', pattern: 'diag' },
+    { color: '#2D4468', light: '#6F84A6', dark: '#14233B', pattern: 'dots' },
+    { color: '#8C4E24', light: '#C08A62', dark: '#6A3510', pattern: 'back' },
+    { color: '#B8862B', light: '#DDBB72', dark: '#8E6418', pattern: 'vert' },
+  ]
+  const jugs = D.jugs.map((j, i) => Object.assign({}, j, LOOKS[i % LOOKS.length]))
+  const look = {}; jugs.forEach((j) => { look[j.id] = j })
+
+  /* ------------------------------------------------ art (BottleArt.tsx, JugArt.tsx, Patterns.tsx) */
+  const VB_W = 200, SPOUT = { x: 95, y: 11 }, FLOOR = 268, SPAN = 152
+  const HOUR = SPAN / total
+  const levelY = (k) => FLOOR - HOUR * k
+  const OUTER = 'M79 39 L79 60 C79 80 34 80 34 104 L34 254 Q34 272 52 272 L148 272 Q166 272 166 254 L166 104 C166 80 121 80 121 60 L121 39 Z'
+  const INNER = 'M83 39 L83 61 C83 84 38 84 38 106 L38 252 Q38 268 54 268 L146 268 Q162 268 162 252 L162 106 C162 84 117 84 117 61 L117 39 Z'
+  function patternInner(j, s, ink) {
+    if (j.pattern === 'diag') return `<path d="M-1 ${s + 1} L${s + 1} -1" stroke="${ink}" stroke-width="${s * 0.17}"/>`
+    if (j.pattern === 'back') return `<path d="M-1 -1 L${s + 1} ${s + 1}" stroke="${ink}" stroke-width="${s * 0.17}"/>`
+    if (j.pattern === 'dots') return `<circle cx="${s / 2}" cy="${s / 2}" r="${s * 0.16}" fill="${ink}"/>`
+    if (j.pattern === 'vert') return `<path d="M${s / 2} 0 V${s}" stroke="${ink}" stroke-width="${s * 0.16}"/>`
+    return ''
+  }
+  const BODY = 'M15 13 L51 13 L60.5 8.5 L56.5 16 C53 20 52 24 53 31 C55 45 51.5 57 41 58 L25 58 C14.5 57 11 45 13 31 C14 24 13 18 15 13 Z'
+  let uid = 0
+  function jugSVG(j) {
+    const u = 'jg' + (++uid)
+    const ink = 'rgba(248,247,244,0.28)'
+    return `<svg viewBox="0 0 64 64" aria-hidden="true"><defs>
+      <linearGradient id="${u}s" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0.10"/><stop offset="0.28" stop-color="#fff" stop-opacity="0.26"/><stop offset="0.55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.30"/></linearGradient>
+      <clipPath id="${u}c"><path d="${BODY}"/></clipPath>
+      <pattern id="${u}p" width="6" height="6" patternUnits="userSpaceOnUse">${patternInner(j, 6, ink)}</pattern></defs>
+      <ellipse cx="33" cy="60" rx="19" ry="2.6" fill="#0D0C0B" opacity="0.14"/>
+      <path d="M15.5 21 C5 20 4 41 14.5 43" fill="none" stroke="${j.dark}" stroke-width="4.6" stroke-linecap="round"/>
+      <path d="M15 21.5 C7 21.5 6.5 39 14 41.5" fill="none" stroke="${j.light}" stroke-opacity="0.35" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="${BODY}" fill="${j.color}"/>
+      <g clip-path="url(#${u}c)"><rect x="0" y="30" width="64" height="30" fill="url(#${u}p)"/><rect x="0" y="0" width="64" height="64" fill="url(#${u}s)"/><rect x="18" y="20" width="3.2" height="26" rx="1.6" fill="#fff" opacity="0.30"/></g>
+      <path d="M15 13 L51 13 L60.5 8.5" fill="none" stroke="${j.light}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+      <ellipse cx="33" cy="14.2" rx="16.5" ry="2.3" fill="${j.dark}"/>
+      <path d="${BODY}" fill="none" stroke="${j.dark}" stroke-opacity="0.55" stroke-width="0.8"/></svg>`
+  }
+  function bottleSVG() {
+    const pats = jugs.map((j) => `<pattern id="bp-${j.id}" width="7" height="7" patternUnits="userSpaceOnUse">${patternInner(j, 7, 'rgba(248,247,244,0.26)')}</pattern>`).join('')
+    let lines = ''
+    for (let k = 1; k <= total; k++) {
+      lines += `<line x1="39" x2="161" y1="${levelY(k)}" y2="${levelY(k)}" stroke="#6B6761" stroke-opacity="${k === total ? 0.5 : 0.22}" stroke-width="0.7"${k === total ? ' stroke-dasharray="3 2"' : ''}/>` +
+        `<line x1="39" x2="50" y1="${levelY(k)}" y2="${levelY(k)}" stroke="#494540" stroke-opacity="0.55" stroke-width="1"/>`
+    }
+    let ridges = ''
+    for (let i = 0; i < 9; i++) ridges += `<line x1="${78 + i * 5.5}" x2="${78 + i * 5.5}" y1="22" y2="38" stroke="#fff" stroke-opacity="0.10" stroke-width="1.4"/>`
+    return `<svg class="bt-svg" id="bottle" viewBox="0 0 200 290" role="img"><defs>
+        <clipPath id="bt-in"><path d="${INNER}"/></clipPath>
+        <linearGradient id="bt-glass" x1="0" x2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.75"/><stop offset="0.5" stop-color="#EEF1EF" stop-opacity="0.45"/><stop offset="1" stop-color="#E3E6E3" stop-opacity="0.7"/></linearGradient>
+        <linearGradient id="bt-shade" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="0.26"/><stop offset="0.18" stop-color="#000" stop-opacity="0.04"/><stop offset="0.38" stop-color="#fff" stop-opacity="0.12"/><stop offset="0.62" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.30"/></linearGradient>
+        <radialGradient id="bt-floor"><stop offset="0" stop-color="#0D0C0B" stop-opacity="0.20"/><stop offset="1" stop-color="#0D0C0B" stop-opacity="0"/></radialGradient>
+        ${pats}</defs>
+      <ellipse cx="100" cy="275" rx="80" ry="9" fill="url(#bt-floor)"/>
+      <path d="${OUTER}" fill="url(#bt-glass)"/>
+      <rect x="75" y="30" width="50" height="9" rx="2.5" fill="url(#bt-glass)" stroke="#8C857A" stroke-opacity="0.8" stroke-width="1.2"/>
+      <g clip-path="url(#bt-in)">
+        <g id="btLayers"></g>
+        <rect id="btShade" x="36" y="0" width="128" height="290" fill="url(#bt-shade)" class="bt-slide" style="opacity:0"/>
+        <g id="btSurface" class="bt-slide" style="opacity:0"><g id="btSettle"><ellipse id="btTop" cx="100" cy="0" rx="62" ry="3.2" fill="transparent" opacity="0.9"/><ellipse cx="86" cy="-0.6" rx="30" ry="0.9" fill="#fff" opacity="0.45"/></g></g>
+        <g id="btSplash"></g>
+      </g>
+      <g id="btStream"></g>
+      ${lines}
+      <path d="${INNER}" fill="none" stroke="#8C857A" stroke-opacity="0.28" stroke-width="1"/>
+      <path d="${OUTER}" fill="none" stroke="#7D776E" stroke-width="1.5" stroke-linejoin="round"/>
+      <rect x="46" y="112" width="7" height="138" rx="3.5" fill="#fff" opacity="0.55"/>
+      <rect x="57" y="118" width="2.2" height="120" rx="1.1" fill="#fff" opacity="0.4"/>
+      <rect x="150" y="116" width="3" height="128" rx="1.5" fill="#fff" opacity="0.32"/>
+      <path d="M52 99 C58 90 72 86 83 80" fill="none" stroke="#fff" stroke-opacity="0.7" stroke-width="3" stroke-linecap="round"/>
+      <rect x="87" y="42" width="3" height="22" rx="1.5" fill="#fff" opacity="0.55"/>
+      <g id="btCap" class="bt-cap" style="display:none"><rect x="72" y="19" width="56" height="21" rx="3" fill="#2B2723"/>${ridges}<rect x="75" y="21" width="50" height="3" rx="1.5" fill="#fff" opacity="0.2"/></g>
+    </svg>`
+  }
+  const MINUS = '<svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="none" stroke="#8C857A" stroke-width="1"/><path d="M6.5 11 H15.5" stroke="#0D0C0B" stroke-width="1.6" stroke-linecap="round"/></svg>'
+
+  /* ------------------------------------------------ the screen */
+  const parts = D.counter.split('{left}')
+  const rest = (parts[1] || '').trim()
+  ui.obj.innerHTML = `
+    <div class="bt">
+      <div class="bt-main">
+        <div class="bt-spacer" aria-hidden="true"></div>
+        <div class="bt-shake" id="shake">${bottleSVG()}</div>
+        <div class="bt-read" aria-live="polite"><p class="bt-n" id="btN"></p><p class="bt-rest">${esc(rest)}</p></div>
+      </div>
+      <div class="bt-tray">${jugs.map((j, i) => `
+        <div class="bt-tile" data-tile="${esc(j.id)}" style="--c:${j.color}; --d:${j.dark}">
+          <button type="button" class="bt-pour" data-jug="${esc(j.id)}"><span class="bt-icon" data-icon="${esc(j.id)}"><span class="bt-ic">${jugSVG(j)}</span></span><span class="bt-lbl">${esc(j.label)}</span></button>
+          <div class="bt-bar"><span class="bt-count" data-count="${esc(j.id)}">0</span><button type="button" class="bt-minus" data-back="${esc(j.id)}" aria-label="− ${esc(j.label)}">${MINUS}</button></div>
+        </div>`).join('')}</div>
+    </div>`
+  const ghosts = document.createElement('div'); ghosts.className = 'bt-ghosts'; ghosts.setAttribute('aria-hidden', 'true'); document.body.appendChild(ghosts)
+  const svg = $('#bottle'), layersG = $('#btLayers'), shade = $('#btShade'), surface = $('#btSurface'), settle = $('#btSettle'), topE = $('#btTop')
+
+  /* ------------------------------------------------ state */
+  let seq = 0
+  const layers = []            // { id, jug, el }, in pour order
+  function layerEl(l, k, fresh) {
+    const j = look[l.jug]
+    const h = k === 0 ? HOUR + 10 : HOUR + 0.6
+    const g = document.createElementNS(NS, 'g')
+    g.setAttribute('class', 'bt-slide'); g.style.transform = `translateY(${levelY(k)}px)`
+    g.innerHTML = `<g${fresh ? ' class="bt-rise"' : ''}><rect x="36" y="${-HOUR}" width="128" height="${h}" fill="${j.color}"/><rect x="36" y="${-HOUR}" width="128" height="${h}" fill="url(#bp-${j.id})"/></g>`
+    return g
+  }
+  const count = (id) => layers.filter((l) => l.jug === id).length
+
+  function setLevel(rising) {
+    const level = layers.length
+    const d = rising ? '600ms' : '0ms', dur = rising ? '520ms' : '320ms'
+    ;[shade, surface].forEach((el) => { el.style.transitionDelay = d; el.style.transitionDuration = dur; el.style.transform = `translateY(${levelY(level)}px)` })
+    shade.style.opacity = level ? 1 : 0
+    surface.style.opacity = level ? 1 : 0
+    const top = layers[level - 1]
+    clearTimeout(topE._t)
+    const paint = () => topE.setAttribute('fill', top ? look[top.jug].light : 'transparent')
+    if (rising && !reduce) topE._t = setTimeout(paint, 600); else paint()
+    svg.setAttribute('aria-label', `${level} / ${total}`)
+  }
+  function readout(pop) {
+    const left = total - layers.length
+    const n = $('#btN')
+    n.innerHTML = `<span${pop ? ' class="bt-pop"' : ''}>${left}</span>`
+    n.classList.toggle('full', left === 0)
+    jugs.forEach((j) => {
+      const c = count(j.id)
+      const el = $(`[data-count="${j.id}"]`)
+      if (el.textContent !== String(c)) el.innerHTML = c ? `<span class="bt-pop">${c}</span>` : '0'
+      $(`[data-tile="${j.id}"]`).classList.toggle('has', c > 0)
+      $(`[data-back="${j.id}"]`).disabled = !c
+      const b = $(`[data-jug="${j.id}"]`)
+      b.setAttribute('aria-disabled', left === 0 ? 'true' : 'false')
+      b.setAttribute('aria-label', `${j.label}: ${c}`)
+    })
+    const cap = $('#btCap')
+    const wasFull = cap.style.display !== 'none'
+    cap.style.display = left === 0 ? '' : 'none'
+    if (left === 0 && !wasFull) { cap.classList.toggle('now', !pop); cap.style.animation = 'none'; void cap.getBoundingClientRect(); cap.style.animation = '' }
+    // the answer and the survey's own Next label
+    const out = {}; jugs.forEach((j) => { out[j.id] = count(j.id) })
+    ui.save(layers.length ? out : undefined)
+    if (left === 0) ui.status(true); else ui.status(false, CeresNav.fill(D.missing, { n: left }))
+  }
+
+  function pour(id) {
+    if (layers.length >= total) {
+      if (!reduce) $('#shake').animate([0, -4, 4, -3, 3, 0].map((x) => ({ transform: `translateX(${x}px) rotate(${x * 0.4}deg)` })), { duration: 360, easing: 'ease-out' })
+      return
+    }
+    const from = layers.length
+    const l = { id: ++seq, jug: id }
+    l.el = layerEl(l, from, !reduce)
+    layers.push(l); layersG.appendChild(l.el)
+    setLevel(true)
+    if (!reduce) {
+      // the stream falls from the spout, holds, then lets go; a ring where it lands; the surface settles
+      const j = look[id]
+      $('#btStream').innerHTML = `<path d="M${SPOUT.x} ${SPOUT.y} Q${SPOUT.x + 3.5} ${SPOUT.y + 3} ${SPOUT.x + 3.5} ${SPOUT.y + 12} L${SPOUT.x + 3.5} ${levelY(from) + 1}" pathLength="100" fill="none" stroke="${j.color}" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="100 100" class="bt-stream"/>`
+      $('#btSplash').innerHTML = `<ellipse cx="${SPOUT.x + 3.5}" cy="${levelY(from)}" rx="14" ry="2.4" fill="none" stroke="#fff" stroke-width="1.2" class="bt-splash"/>`
+      settle.classList.remove('bt-settle'); void settle.getBoundingClientRect(); settle.classList.add('bt-settle')
+      fly(id)
+    }
+    readout(true)
+  }
+  function takeBack(id) {
+    let i = -1
+    for (let k = layers.length - 1; k >= 0; k--) if (layers[k].jug === id) { i = k; break }
+    if (i < 0) return
+    const [l] = layers.splice(i, 1)
+    l.el.remove()
+    layers.forEach((x, k) => { x.el.style.transform = `translateY(${levelY(k)}px)` })
+    $('#btStream').innerHTML = ''; $('#btSplash').innerHTML = ''
+    setLevel(false)
+    readout(true)
+  }
+
+  // the jug flies from its tile to the bottle's mouth, tips about its spout, and goes home (GhostJug)
+  function fly(id) {
+    const src = $(`[data-icon="${id}"]`)
+    const b = svg.getBoundingClientRect(), s = src.getBoundingClientRect()
+    const scale = b.width / VB_W
+    const size = Math.round(64 * scale)
+    const px = b.left + SPOUT.x * scale, py = b.top + SPOUT.y * scale
+    const gl = px - 0.9375 * size, gt = py - 0.133 * size
+    const k = s.width / size
+    const cx = gl + size / 2, cy = gt + size / 2
+    const tx = s.left + s.width / 2 - px - k * (cx - px)
+    const ty = s.top + s.height / 2 - py - k * (cy - py)
+    $$(`.bt-ghost[data-g="${id}"]`, ghosts).forEach((g) => g.remove())
+    const g = document.createElement('div')
+    g.className = 'bt-ghost'; g.dataset.g = id
+    g.style.cssText = `left:${gl}px; top:${gt}px; width:${size}px; height:${size}px`
+    g.innerHTML = jugSVG(look[id])
+    ghosts.appendChild(g)
+    src.classList.add('lifted')
+    const T = (x, y, sc, r) => `translate(${x}px, ${y}px) scale(${sc}) rotate(${r}deg)`
+    const a = g.animate([
+      { offset: 0, transform: T(tx, ty, k, 0), opacity: 1, easing: 'cubic-bezier(.35,0,.2,1)' },
+      { offset: 0.34, transform: T(0, 0, 1, -6), opacity: 1, easing: 'cubic-bezier(.45,0,.25,1)' },
+      { offset: 0.48, transform: T(0, 0, 1, 66), opacity: 1 },
+      { offset: 0.79, transform: T(0, 0, 1, 70), opacity: 1, easing: 'cubic-bezier(.45,0,.3,1)' },
+      { offset: 0.9, transform: T(0, -4, 1, 0), opacity: 1 },
+      { offset: 1, transform: T(0, -10, 1, 0), opacity: 0 },
+    ], { duration: 1150, fill: 'both' })
+    a.onfinish = () => { g.remove(); if (!$(`.bt-ghost[data-g="${id}"]`, ghosts)) src.classList.remove('lifted') }
+  }
+
+  ui.obj.addEventListener('click', (e) => {
+    const p = e.target.closest('[data-jug]'); if (p) { pour(p.dataset.jug); return }
+    const m = e.target.closest('[data-back]'); if (m && !m.disabled) takeBack(m.dataset.back)
+  })
+
+  /* ------------------------------------------------ the reviewer's own answer, grouped by jug (pour order is not kept) */
+  const saved = ui.load()
+  if (saved && typeof saved === 'object') {
+    let sum = 0
+    jugs.forEach((j) => { const n = saved[j.id]; if (Number.isInteger(n) && n > 0) sum += n })
+    if (sum <= total) jugs.forEach((j) => {
+      const n = Number.isInteger(saved[j.id]) && saved[j.id] > 0 ? saved[j.id] : 0
+      for (let i = 0; i < n; i++) { const l = { id: ++seq, jug: j.id }; l.el = layerEl(l, layers.length, false); layers.push(l); layersG.appendChild(l.el) }
+    })
+  }
+  setLevel(false)
+  readout(false)
+  // nothing poured yet: the jugs bob once, in turn, to say they can be tapped
+  if (!layers.length && !reduce) $$('.bt-ic').forEach((el, i) => { el.style.display = 'block'; el.style.animationDelay = (700 + i * 110) + 'ms'; el.classList.add('bt-hint') })
+})()
+</script>
+</body>
+</html>

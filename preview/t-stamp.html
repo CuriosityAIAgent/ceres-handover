@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-stamp: the stamp deck (design §4, "The stamps"), with its skins: plain (4.3, 8.3), ai (7.4: four olive stamps and a
+   thin timeline), readiness (9.2: impressions print into a square grade box), tariff (8.1 on the stage frame: a printed
+   schedule whose margin boxes fill with impressions) and the line pick (8.1a). The feel follows The Ascent's stamp
+   (src/v2/render/stamp.tsx): the stamp presses, an ink impression slams onto the card, the card slides onto its stack.
+   Page-only CSS; the shared frame is untouched. */
+:root {
+  --card-w: 430px; --card-h: 184px;
+  --ink-c: #7A3E12;
+  --cream: #FCF8EE;
+  --ease-out: cubic-bezier(.3,.7,.2,1);
+}
+.pv-t-stamp .st-ai { --ink-c: #5B6631; }
+.c-obj.st-obj { padding-top: 12px; }
+.sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------------- the deck ---------------- */
+.st { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 22px; padding-bottom: 4px; }
+.st-area { position: relative; flex: none; width: var(--card-w); max-width: 100%; height: var(--card-h); margin: 0 auto; }
+.st-deck i { position: absolute; inset: 0; border-radius: 3px; border: 1px solid rgba(138,97,22,.28); background: #F7F1E2; pointer-events: none; }
+.st-deck i.d2 { transform: translateY(7px) rotate(1.1deg); }
+.st-deck i.d1 { transform: translateY(3.5px) rotate(-.7deg); background: #FAF5E8; }
+.st-card {
+  position: absolute; inset: 0; z-index: 2; background: var(--cream); border: 1px solid rgba(122,62,18,.55); border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(13,12,11,.05), 0 12px 26px -12px rgba(13,12,11,.30);
+  padding: 14px 26px 13px; display: flex; flex-direction: column; will-change: transform;
+}
+.st-card::before { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(122,62,18,.16); border-radius: 1px; pointer-events: none; }
+.st-top { display: flex; justify-content: space-between; align-items: center; min-height: 18px; font-family: var(--font-ui); font-size: 12px; font-weight: 600; letter-spacing: .08em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st-top b { color: var(--bronze); font-weight: 600; }
+.st-sq { display: flex; gap: 4px; }
+.st-sq i { width: 15px; height: 15px; border: 1px solid var(--rule-soft); border-radius: 2px; display: grid; place-items: center; color: var(--ink-c); }
+.st-sq i.now { border-color: var(--ink); }
+.st-sq i.done { background: #F1EBDD; border-color: #D9D3C7; }
+.st-sq i svg { width: 10px; height: 10px; }
+.st-mid { flex: 1; min-height: 0; display: flex; align-items: center; }
+.st-lbl { margin: 0; font-family: var(--font-text); font-weight: 600; font-size: 22px; line-height: 28px; color: var(--ink); text-wrap: balance; }
+.st-hint { margin: 0; padding-top: 7px; border-top: 1px solid rgba(122,62,18,.18); font-family: var(--font-ui); font-size: 14px; line-height: 18px; color: var(--muted); }
+.st-ink { position: absolute; right: 16px; bottom: 10px; z-index: 3; pointer-events: none; }
+.st-ink svg, .imp { display: block; mix-blend-mode: multiply; opacity: .92; }
+.st-pv { position: absolute; top: 12px; right: 18px; z-index: 3; }
+
+/* readiness: a report card with a square grade box */
+.st-card.grade { flex-direction: row; gap: 18px; align-items: stretch; }
+.st-card.grade .st-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.st-gbox { flex: none; align-self: center; width: 108px; height: 108px; border: 1px solid rgba(122,62,18,.45); border-radius: 2px; background: #FFFEFA; position: relative; box-shadow: inset 0 0 0 4px #FFFEFA, inset 0 0 0 5px rgba(122,62,18,.18); }
+.st-gbox .st-ink { inset: 6px; right: auto; bottom: auto; width: calc(100% - 12px); height: calc(100% - 12px); }
+.st-gbox .st-ink svg { width: 100%; height: 100%; }
+.st-card.grade .st-lbl { font-size: 21px; line-height: 27px; }
+
+/* 7.4: the timeline above the card */
+.st-tl { position: relative; flex: none; width: var(--card-w); max-width: 100%; height: 22px; margin: 0 auto -10px; }
+.st-tl::before { content: ""; position: absolute; left: 7px; right: 7px; top: 50%; height: 1px; background: var(--rule); opacity: .7; }
+.st-tl ol { list-style: none; margin: 0; padding: 0; position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: center; }
+.st-tl button { all: unset; box-sizing: border-box; width: 22px; height: 22px; display: grid; place-items: center; cursor: pointer; border-radius: 50%; }
+.st-tl button i { display: block; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--rule); background: var(--paper); transition: transform 160ms, background 160ms; }
+.st-tl button.done i { background: var(--olive); border-color: var(--olive); }
+.st-tl button.now i { width: 13px; height: 13px; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(91,102,49,.16); }
+.st-tl button:hover i { transform: scale(1.2); }
+.st-tl button:focus-visible { outline: 2px solid var(--navy); outline-offset: 0; }
+
+/* all stamped */
+.st-done { position: absolute; inset: 0; border: 1px dashed var(--rule); border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.st-done .n { font-family: var(--font-display); font-size: 54px; line-height: 1; color: var(--bronze); }
+
+/* ---------------- the stamps and their stacks ---------------- */
+.st-row { flex: none; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 176px)); justify-content: center; gap: 0 20px; }
+.st-col { min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.st-pile { all: unset; box-sizing: border-box; position: relative; width: 100px; height: 44px; margin-bottom: 8px; cursor: pointer; border-radius: 3px; }
+.st-pile[aria-disabled="true"] { cursor: default; }
+.st-pile:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.st-pile .empty { position: absolute; left: 4px; right: 4px; bottom: 0; height: 32px; border: 1px dashed var(--rule-soft); border-radius: 3px; }
+.st-mini { position: absolute; left: 4px; right: 4px; bottom: 0; height: 32px; border: 1px solid #D9CDB4; border-radius: 3px; background: var(--cream); box-shadow: 0 1px 1px rgba(13,12,11,.08); display: grid; place-items: center; color: var(--ink-c); }
+.st-mini svg { width: 15px; height: 15px; }
+.st-mini .w { font-family: var(--font-ui); font-weight: 700; font-size: 8.5px; letter-spacing: .08em; white-space: nowrap; }
+.st-mini.land { animation: stLand 180ms ease-out both; }
+.st-pile .cnt { position: absolute; right: -15px; bottom: 2px; font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st-pile:not([aria-disabled="true"]):hover .st-mini:last-of-type { transform: translateY(-3px) !important; }
+
+.st-stamp { all: unset; box-sizing: border-box; width: 100%; flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.st-body { display: block; width: 84%; height: 28px; transition: transform 120ms; }
+.st-face {
+  width: 100%; flex: 1 1 auto; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 5px 8px;
+  border: 2px solid var(--ink); border-radius: 4px; background: var(--ground); box-shadow: 0 3px 0 var(--ink);
+  font-family: var(--font-ui); font-weight: 600; font-size: 15px; line-height: 18px; color: var(--ink); text-align: center;
+  transition: transform 120ms, box-shadow 120ms, background 150ms;
+}
+.st-face svg { flex: none; width: 17px; height: 17px; }
+.st-stamp:hover .st-face { background: #F3F1EC; }
+.st-stamp:active .st-face { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
+.st-stamp:active .st-body { transform: translateY(3px); }
+.st-stamp.press .st-face { animation: stPress 420ms ease-out; }
+.st-stamp.press .st-body { animation: stPressB 420ms ease-out; }
+.st-stamp:focus-visible { outline: none; }
+.st-stamp:focus-visible .st-face { outline: 2px solid var(--navy); outline-offset: 3px; }
+.st-stamp[aria-disabled="true"] { opacity: .4; cursor: default; }
+.st-stamp[aria-disabled="true"] .st-face { background: var(--ground); transform: none; box-shadow: 0 3px 0 var(--ink); }
+/* 7.4: four olive stamps */
+.st-ai .st-face { border-color: var(--olive); box-shadow: 0 3px 0 var(--olive); color: #3F4822; }
+.st-ai .st-stamp:active .st-face { box-shadow: 0 0 0 var(--olive); }
+.st-ai .st-row { grid-template-columns: repeat(var(--n), minmax(0, 150px)); gap: 0 14px; }
+.st-ai .st-face { font-size: 14px; line-height: 17px; }
+
+/* ---------------- 8.1: the tariff card (stage frame) ---------------- */
+.c-frame.stage { width: 1120px; }
+.c-frame.stage .c-body { grid-template-columns: 300px 1fr; }
+.c-stage.st-obj { padding-top: 18px; }
+.tf { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 272px; gap: 30px; align-items: center; padding-bottom: 14px; }
+.tf-card { align-self: center; background: #FFFEFA; border: 1px solid var(--rule-soft); box-shadow: 0 1px 2px rgba(13,12,11,.06), 0 14px 30px -18px rgba(13,12,11,.22); padding: 16px 22px 12px; }
+.tf-head { margin: 0; padding-bottom: 9px; text-align: center; border-bottom: 3px double var(--ink); font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: .22em; color: var(--ink); white-space: nowrap; }
+.tf-lines { list-style: none; margin: 4px 0 0; padding: 0; }
+.tf-line { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 3px 6px 3px 4px; border-bottom: 1px solid var(--rule-soft); cursor: pointer; border-radius: 1px; transition: background 150ms, opacity 200ms; }
+.tf-lines li:last-child .tf-line { border-bottom: 0; }
+.tf-line:hover { background: rgba(239,235,228,.7); }
+.tf-line:focus-visible { outline: 2px solid var(--navy); outline-offset: -1px; }
+.tf-no { flex: none; width: 20px; font-family: var(--font-display); font-size: 13px; color: var(--bronze); font-variant-numeric: lining-nums; }
+.tf-lbl { flex: 0 1 auto; min-width: 0; font-family: var(--font-text); font-size: 14.5px; line-height: 18px; color: var(--ink); transition: opacity 200ms; }
+.tf-lead { flex: 1 1 14px; min-width: 14px; align-self: flex-end; margin-bottom: 9px; border-bottom: 1px dotted var(--rule); }
+.tf-box { flex: none; width: 72px; height: 26px; border: 1px solid var(--rule); border-radius: 2px; display: grid; place-items: center; background: #FFFEFA; }
+.tf-box svg { display: block; height: 22px; width: auto; max-width: 68px; mix-blend-mode: multiply; }
+.tf-box.slam svg { animation: stSlam 230ms cubic-bezier(.5,0,.6,1) both; }
+.tf-line.now { background: var(--marble); }
+.tf-line.now .tf-lbl { opacity: .28; }
+.tf-line.now .tf-box { border-style: dashed; border-color: var(--navy); }
+.tf-right { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.tf-slipwrap { position: relative; width: 100%; height: 138px; }
+.tf-slip { position: absolute; inset: 0; z-index: 2; background: var(--cream); border: 1px solid rgba(122,62,18,.55); border-radius: 3px; box-shadow: 0 1px 0 rgba(13,12,11,.05), 0 14px 26px -12px rgba(13,12,11,.32); padding: 12px 18px 11px; display: flex; flex-direction: column; will-change: transform; }
+.tf-slip::before { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(122,62,18,.16); border-radius: 1px; pointer-events: none; }
+.tf-slip .st-lbl { font-size: 19px; line-height: 24px; }
+.tf-slip .st-hint { font-size: 13px; line-height: 16px; padding-top: 5px; }
+.tf-slip .st-ink { right: 10px; bottom: 8px; }
+.tf-right .st-row { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 10px; }
+.tf-right .st-face { font-size: 13px; line-height: 16px; min-height: 58px; padding: 4px 5px; flex-direction: column; gap: 3px; }
+.tf-right .st-face svg { width: 16px; height: 16px; }
+.tf-right .st-body { height: 24px; }
+.tf-strip { display: none; }
+.tf-done { position: absolute; inset: 0; border: 1px dashed var(--rule); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+.tf-done .n { font-family: var(--font-display); font-size: 46px; line-height: 1; color: var(--bronze); }
+.pv-chip.st-w1 { color: var(--amber); border-color: rgba(154,91,0,.35); background: var(--paper); }
+
+/* ---------------- 8.1a: tap one line ---------------- */
+.pk { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding-bottom: 14px; }
+.pk .tf-card { width: 100%; max-width: 560px; }
+.tf-line.dead { cursor: default; }
+.tf-line.dead .tf-lbl, .tf-line.dead .tf-no, .tf-line.dead .tf-box { opacity: .34; }
+.tf-line.dead:hover { background: none; }
+.tf-line.on { background: #FBF3E1; box-shadow: inset 0 0 0 1.5px var(--bronze); }
+.tf-line.on .tf-lbl { font-weight: 600; }
+.pk-chips { display: none; }
+
+/* ---------------- motion ---------------- */
+@keyframes stRise { from { transform: translateY(8px) scale(.97); opacity: .5; } to { transform: none; opacity: 1; } }
+.rise { animation: stRise 260ms var(--ease-out) both; }
+@keyframes stBack { from { transform: translateY(60px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.back-in { animation: stBack 320ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes stSlam { 0% { transform: scale(1.7); opacity: 0; } 55% { transform: scale(.95); opacity: 1; } 75% { transform: scale(1.02); } 100% { transform: scale(1); opacity: 1; } }
+.slam { animation: stSlam 230ms cubic-bezier(.5,0,.6,1) both; transform-origin: center; }
+@keyframes stPress { 0% { transform: translateY(0); box-shadow: 0 3px 0 var(--ink); } 30%, 60% { transform: translateY(5px); box-shadow: 0 0 0 var(--ink); } 100% { transform: translateY(0); } }
+@keyframes stPressB { 0% { transform: translateY(0); } 30%, 60% { transform: translateY(5px); } 100% { transform: translateY(0); } }
+@keyframes stLand { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============ short laptops (1280x650 up to ~720 tall) ============ */
+@media (min-width: 701px) and (max-height: 720px) {
+  :root { --card-h: 150px; }
+  .st { gap: 14px; }
+  .st-card { padding: 11px 24px 10px; }
+  .st-lbl { font-size: 20px; line-height: 25px; }
+  .st-card.grade .st-lbl { font-size: 19px; line-height: 24px; }
+  .st-hint { font-size: 13px; line-height: 16px; padding-top: 5px; }
+  .st-gbox { width: 92px; height: 92px; }
+  .st-pile { height: 36px; margin-bottom: 6px; }
+  .st-pile .empty, .st-mini { height: 28px; }
+  .st-body { height: 20px; }
+  .st-face { min-height: 48px; }
+  .st-tl { margin-bottom: -6px; }
+  .tf-line { min-height: 28px; padding-top: 2px; padding-bottom: 2px; }
+  .tf-lbl { font-size: 13.5px; line-height: 16px; }
+  .tf-box { height: 22px; }
+  .tf-box svg { height: 19px; }
+  .tf-card { padding: 12px 20px 8px; }
+  .tf-head { font-size: 14px; padding-bottom: 7px; }
+  .tf-slipwrap { height: 124px; }
+  .tf-right { gap: 14px; }
+}
+
+/* =========================== phone =========================== */
+@media (max-width: 700px) {
+  :root { --card-w: 340px; --card-h: 150px; }
+  .c-obj.st-obj { padding-top: 10px; }
+  .st { gap: 14px; justify-content: flex-start; padding-top: 4px; }
+  .st-card { padding: 11px 18px 10px; }
+  .st-card::before { inset: 5px; }
+  .st-top { font-size: 11px; }
+  .st-sq { gap: 3px; }
+  .st-sq i { width: 12px; height: 12px; }
+  .st-sq i svg { width: 8px; height: 8px; }
+  .st-lbl, .st-card.grade .st-lbl { font-size: 18px; line-height: 23px; }
+  .st-hint { font-size: 12.5px; line-height: 16px; padding-top: 5px; }
+  .st-ink { right: 10px; bottom: 7px; }
+  .st-card.grade { gap: 12px; }
+  .st-gbox { width: 80px; height: 80px; }
+  .st-row { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0 10px; }
+  .st-ai .st-row { gap: 0 6px; }
+  .st-pile { width: 70px; height: 34px; margin-bottom: 6px; }
+  .st-pile .empty, .st-mini { height: 26px; }
+  .st-mini .w { font-size: 7px; letter-spacing: .04em; }
+  .st-pile .cnt { right: -11px; font-size: 12px; }
+  .st-body { height: 20px; width: 88%; }
+  .st-face { min-height: 54px; padding: 4px 4px; gap: 3px; flex-direction: column; font-size: 12.5px; line-height: 15px; }
+  .st-ai .st-face { font-size: 11.5px; line-height: 14px; }
+  .st-face svg { width: 15px; height: 15px; }
+  .st-tl { margin-bottom: -6px; height: 20px; }
+
+  /* 8.1 on a phone: a strip of margin boxes above the slip */
+  .c-stage.st-obj { padding-top: 8px; }
+  .tf { grid-template-columns: 1fr; align-content: start; align-items: start; gap: 12px; padding-bottom: 6px; }
+  .tf > .tf-card { display: none; }
+  .tf-strip { display: grid; grid-template-columns: repeat(var(--lines), minmax(0, 1fr)); gap: 3px; height: 24px; }
+  .tf-sq { all: unset; box-sizing: border-box; height: 24px; border: 1px solid var(--rule); border-radius: 2px; background: #FFFEFA; display: grid; place-items: center; color: var(--ink-c); cursor: pointer; }
+  .tf-sq svg { width: 12px; height: 12px; }
+  .tf-sq.now { border-color: var(--navy); border-style: dashed; background: var(--marble); }
+  .tf-sq.done { background: #F1EBDD; border-color: #D9CDB4; }
+  .tf-sq:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
+  .tf-right { gap: 12px; }
+  .tf-slipwrap { height: 132px; width: 100%; max-width: 350px; }
+  .tf-slip { padding: 11px 16px 10px; }
+  .tf-slip .st-lbl { font-size: 18px; line-height: 23px; }
+  .tf-right .st-row { gap: 0 10px; }
+  .tf-right .st-face { font-size: 12.5px; line-height: 15px; min-height: 54px; }
+
+  /* 8.1a on a phone: chips in two columns, Do it first */
+  .pk { align-items: flex-start; padding-top: 4px; }
+  .pk .tf-card { display: none; }
+  .pk-chips { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+  .pk-chip { all: unset; box-sizing: border-box; min-height: 46px; padding: 5px 8px 6px; border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--ground); cursor: pointer;
+    font-family: var(--font-ui); font-size: 12.5px; line-height: 15px; color: var(--ink); display: flex; flex-direction: column; justify-content: center; }
+  .pk-tag { display: flex; align-items: center; gap: 4px; font-size: 9.5px; line-height: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--bronze); margin-bottom: 2px; }
+  .pk-tag svg { width: 10px; height: 10px; }
+  .pk-chip.on { border-color: var(--bronze); box-shadow: inset 0 0 0 1px var(--bronze); background: #FBF3E1; }
+  .pk-chip:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- worn ink, as The Ascent's stamp (hero/stamp/ink.tsx) -->
+    <filter id="st-ink" x="-5%" y="-10%" width="110%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="11" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -3.2 0 0 0 2.7" result="wear"/>
+      <feComposite in="SourceGraphic" in2="wear" operator="in" result="worn"/>
+      <feDisplacementMap in="worn" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'stamp') { CeresNav.go(step.id); return }
+  const P = window.CeresPreview
+  const S = window.CERES_SCRIPT
+  const esc = P.esc
+  const D = step.data
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const narrow = () => window.matchMedia('(max-width: 700px)').matches
+  const skin = D.skin || 'plain'
+  const INK = skin === 'ai' ? '#5B6631' : '#7A3E12'
+  const TILTS = [-4, 5, -7, 3]
+
+  /* ------------------------------------------------ the same seeded order every visit (and 8.1a reads 8.1's) */
+  function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) } return h >>> 0 }
+  function rng(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
+  function orderFor(s) {
+    const cards = s.data.cards.slice()
+    if (!s.data.shuffle) return cards
+    const r = rng(s.data.seed || hash('ceres-' + s.id))
+    for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = cards[i]; cards[i] = cards[j]; cards[j] = t }
+    return cards
+  }
+
+  /* ------------------------------------------------ ink: glyphs and impressions (after The Ascent's ink.tsx) */
+  function glyphPath(g) {
+    switch (g) {
+      case 'tick': return '<path d="M3 8.5 L6.5 12 L13 4.5"/>'
+      case 'cross': return '<path d="M4 4 L12 12 M12 4 L4 12"/>'
+      case 'step': return '<path d="M2 13.5 H6 V9.5 H10 V5.5 H14"/>'                       // two stairs
+      case 'half': return '<circle cx="8" cy="8" r="5.6"/><path d="M8 2.4 A5.6 5.6 0 0 0 8 13.6 Z" fill="currentColor" stroke="none"/>'
+      case 'flag': return '<path d="M4.5 14.5 V2"/><path d="M4.5 2.6 L12.5 5.3 L4.5 8 Z" fill="currentColor"/>'   // a pennant
+      default: return ''
+    }
+  }
+  const glyph = (g) => g ? `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${glyphPath(g)}</svg>` : ''
+  /** The impression: a double-ruled box with the glyph and the short word. The Ascent sizes it 70 + length x 17.5. */
+  function impSize(s) { return { w: Math.round((s.glyph ? 70 : 34) + s.impression.length * 17.5), h: 60 } }
+  function impression(s, px) {
+    const { w, h } = impSize(s)
+    const text = esc(s.impression)
+    const tx = s.glyph ? 52 : 17
+    const tl = (s.impression.length * 17.5 - 4).toFixed(1)
+    const g = s.glyph ? `<g transform="translate(18 16) scale(1.75)" stroke="${INK}" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:${INK}">${glyphPath(s.glyph)}</g>` : ''
+    const size = px ? `width="${(w * px / h).toFixed(1)}" height="${px}"` : ''
+    return `<svg class="imp" viewBox="0 0 ${w} ${h}" ${size} aria-hidden="true"><g filter="url(#st-ink)">
+      <rect x="2.5" y="2.5" width="${w - 5}" height="${h - 5}" rx="7" fill="none" stroke="${INK}" stroke-width="3.6"/>
+      <rect x="8.5" y="8.5" width="${w - 17}" height="${h - 17}" rx="3.5" fill="none" stroke="${INK}" stroke-width="1.3"/>
+      ${g}<text x="${tx}" y="39.5" fill="${INK}" font-family="Archivo, Arial, sans-serif" font-weight="700" font-size="24" letter-spacing="2.5" textLength="${tl}" lengthAdjust="spacingAndGlyphs">${text}</text></g></svg>`
+  }
+  /** 9.2: the impression for a square grade box: the glyph large, the word under it. */
+  function gradeImpression(s) {
+    const tl = Math.min(s.impression.length * 10.2, 80).toFixed(1)
+    return `<svg viewBox="0 0 100 100" aria-hidden="true"><g filter="url(#st-ink)">
+      <rect x="3" y="3" width="94" height="94" rx="6" fill="none" stroke="${INK}" stroke-width="3.4"/>
+      <rect x="9" y="9" width="82" height="82" rx="3" fill="none" stroke="${INK}" stroke-width="1.2"/>
+      <g transform="translate(30 15) scale(2.5)" stroke="${INK}" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:${INK}">${glyphPath(s.glyph)}</g>
+      <text x="50" y="80" text-anchor="middle" fill="${INK}" font-family="Archivo, Arial, sans-serif" font-weight="700" font-size="14" textLength="${tl}" lengthAdjust="spacingAndGlyphs">${esc(s.impression)}</text></g></svg>`
+  }
+  /** The body of a self-inking desk stamp (The Ascent's StampBody); the band is olive on the AI stamps. */
+  function stampBody() {
+    const band = skin === 'ai' ? '#5B6631' : '#8C5A2B', lip = skin === 'ai' ? '#9AA36A' : '#C08A62'
+    return `<svg class="st-body" viewBox="0 0 120 30" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+      <rect x="22" y="1" width="76" height="8" rx="2.5" fill="#2A2724"/><rect x="25" y="2.2" width="70" height="1.4" rx="0.7" fill="#fff" opacity="0.16"/>
+      <path d="M18 9 H102 L106 25 H14 Z" fill="#2F2C29"/><path d="M18 9 H102 L106 25 H14 Z" fill="#000" opacity="0.08"/>
+      <rect x="9" y="7" width="5" height="19" rx="1.5" fill="#55504A"/><rect x="106" y="7" width="5" height="19" rx="1.5" fill="#2E2B28"/>
+      <rect x="7" y="25" width="106" height="5" rx="1" fill="${band}"/><rect x="7" y="25" width="106" height="1.2" fill="${lip}" opacity="0.7"/></svg>`
+  }
+  function stampButton(s) {
+    return `<button type="button" class="st-stamp" data-choice="${esc(s.id)}" aria-label="${esc(s.label)}">${stampBody()}<span class="st-face">${glyph(s.glyph)}<span>${esc(s.label)}</span></span></button>`
+  }
+  const stampOf = (id) => D.stamps.find((s) => s.id === id)
+  const tiltOf = (id) => TILTS[Math.max(0, D.stamps.findIndex((s) => s.id === id)) % TILTS.length]
+  function bounce(btn) { if (!btn || reduce) return; btn.classList.remove('press'); void btn.offsetWidth; btn.classList.add('press') }
+  function fly(el, target, then, tilt) {
+    if (!el || !target || reduce) { then(); return }
+    const a = el.getBoundingClientRect(), b = target.getBoundingClientRect()
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2)
+    const k = Math.max(0.08, Math.min(b.width / a.width, b.height / a.height))
+    const t = tilt || 0
+    const an = el.animate([
+      { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1 },
+      { transform: `translate(${dx * 0.2}px, ${dy * 0.1 - 14}px) scale(.9) rotate(${t / 2}deg)`, opacity: 1, offset: 0.3 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${k}) rotate(${t}deg)`, opacity: 0.2 },
+    ], { duration: 420, easing: 'cubic-bezier(.5,0,.4,1)', fill: 'forwards' })
+    an.onfinish = then
+  }
+
+  /* ================================================================== the stamp deck (4.3, 7.4, 8.1, 8.3, 9.2) */
+  function deck() {
+    const tariff = skin === 'tariff'
+    const ui = P.mount(step, { objClass: 'st-obj st-' + skin })
+    const cards = orderFor(step)
+    const ids = new Set(D.stamps.map((s) => s.id))
+    const ans = {}
+    let landed = []
+    const saved = ui.load()
+    if (saved && typeof saved === 'object') cards.forEach((c) => { if (ids.has(saved[c.id])) { ans[c.id] = saved[c.id]; landed.push(c.id) } })
+    const firstOpen = (from) => {
+      for (let k = 0; k < cards.length; k++) { const i = ((from || 0) + k) % cards.length; if (!(cards[i].id in ans)) return i }
+      return -1
+    }
+    let cur = firstOpen(0)
+    let busy = false
+    const n = D.stamps.length
+
+    if (tariff) {
+      ui.obj.innerHTML = `
+        <div class="tf">
+          <div class="tf-card" id="tfCard">
+            <p class="tf-head">${esc(D.tariffHeader)}</p>
+            <ol class="tf-lines">${cards.map((c, i) => `<li><button type="button" class="tf-line" data-line="${esc(c.id)}"><span class="tf-no">${i + 1}</span><span class="tf-lbl">${esc(c.label)}</span><span class="tf-lead" aria-hidden="true"></span><span class="tf-box" data-box="${esc(c.id)}"></span></button></li>`).join('')}</ol>
+          </div>
+          <div class="tf-strip" style="--lines:${cards.length}">${cards.map((c, i) => `<button type="button" class="tf-sq" data-sq="${esc(c.id)}" aria-label="${i + 1}. ${esc(c.label)}"></button>`).join('')}</div>
+          <div class="tf-right">
+            <div class="tf-slipwrap" id="area"></div>
+            <div class="st-row" style="--n:${n}">${D.stamps.map((s) => `<div class="st-col">${stampButton(s)}</div>`).join('')}</div>
+          </div>
+        </div>`
+    } else {
+      const tl = D.timeline ? `<div class="st-tl" aria-label="${esc(step.title)}"><ol>${cards.map((c, i) => `<li><button type="button" data-tl="${esc(c.id)}" aria-label="${i + 1}. ${esc(c.label)}"><i></i></button></li>`).join('')}</ol></div>` : ''
+      ui.obj.innerHTML = `
+        <div class="st">
+          ${tl}
+          <div class="st-area" id="area"></div>
+          <div class="st-row" style="--n:${n}">${D.stamps.map((s) => `
+            <div class="st-col">
+              <button type="button" class="st-pile" data-pile="${esc(s.id)}"></button>
+              ${stampButton(s)}
+            </div>`).join('')}</div>
+        </div>`
+    }
+    const area = $('#area')
+
+    function cardHTML(c, anim) {
+      const k = cards.indexOf(c)
+      const w1 = c.sensitive ? `<span class="pv-chip st-w1 st-pv" title="Sensitive: dropped from the wave-2 market-manager version">Wave 1 only</span>` : ''
+      const lbl = `<div class="st-mid"><p class="st-lbl">${P.glue(c.label)}</p></div>${c.hint ? `<p class="st-hint">${P.glue(c.hint)}</p>` : ''}`
+      if (tariff) {
+        return `<div class="tf-slip ${anim}" id="card" data-card="${esc(c.id)}">${w1}${lbl}<div class="st-ink" id="ink"></div></div>`
+      }
+      const squares = D.timeline ? '' : `<span class="st-sq" aria-hidden="true">${cards.map((x, j) => {
+        const a = ans[x.id]; const s = a && stampOf(a)
+        return `<i class="${j === k ? 'now' : a ? 'done' : ''}">${s ? (s.glyph ? glyph(s.glyph) : '') : ''}</i>`
+      }).join('')}</span>`
+      const top = `<div class="st-top"><span><b>${k + 1}</b> / ${cards.length}</span>${squares}</div>`
+      if (skin === 'readiness') {
+        return `<div class="st-card grade ${anim}" id="card" data-card="${esc(c.id)}"><div class="st-text">${top}${lbl}</div><div class="st-gbox"><div class="st-ink" id="ink"></div></div></div>`
+      }
+      return `<div class="st-card ${anim}" id="card" data-card="${esc(c.id)}">${w1}${top}${lbl}<div class="st-ink" id="ink"></div></div>`
+    }
+
+    function draw(anim) {
+      const left = cards.length - Object.keys(ans).length
+      // the card (or the empty place once all are stamped)
+      if (tariff) {
+        area.innerHTML = cur >= 0 ? cardHTML(cards[cur], anim || '') : `<div class="tf-done"><span class="n">${cards.length}</span></div>`
+        cards.forEach((c, i) => {
+          const line = $(`[data-line="${c.id}"]`), box = $(`[data-box="${c.id}"]`), sq = $(`[data-sq="${c.id}"]`)
+          const a = ans[c.id], s = a && stampOf(a)
+          line.classList.toggle('now', i === cur)
+          line.setAttribute('aria-label', `${i + 1}. ${c.label}${s ? ': ' + s.label : ''}`)
+          if (box.dataset.s !== (a || '')) { box.innerHTML = s ? impression(s) : ''; box.dataset.s = a || '' }
+          sq.className = 'tf-sq' + (i === cur ? ' now' : a ? ' done' : '')
+          sq.innerHTML = s ? glyph(s.glyph) : ''
+        })
+      } else {
+        const edges = (left > 2 ? '<i class="d2"></i>' : '') + (left > 1 ? '<i class="d1"></i>' : '')
+        area.innerHTML = `<div class="st-deck" aria-hidden="true">${edges}</div>` +
+          (cur >= 0 ? cardHTML(cards[cur], anim || '') : `<div class="st-done rise"><span class="n">${cards.length}</span>${P.earSVG(12, 36)}</div>`)
+        // the stacks: the cards in the order they landed
+        D.stamps.forEach((s) => {
+          const pile = $(`[data-pile="${s.id}"]`)
+          const on = landed.filter((id) => ans[id] === s.id)
+          const shown = on.slice(-6)
+          pile.innerHTML = (on.length ? '' : '<span class="empty"></span>') +
+            shown.map((id, k) => `<span class="st-mini${k === shown.length - 1 && anim === 'land-' + s.id ? ' land' : ''}" style="transform: translateY(${-k * 3}px) rotate(${(k % 2 ? 1 : -1) * (1.2 + (k % 3) * 0.6)}deg); z-index:${k}">${s.glyph ? glyph(s.glyph) : `<span class="w">${esc(s.impression)}</span>`}</span>`).join('') +
+            (on.length ? `<span class="cnt">${on.length}</span>` : '')
+          pile.setAttribute('aria-disabled', on.length ? 'false' : 'true')
+          pile.tabIndex = on.length ? 0 : -1
+          pile.setAttribute('aria-label', `${s.label}: ${on.length}`)
+        })
+        if (D.timeline) cards.forEach((c, i) => {
+          const b = $(`[data-tl="${c.id}"]`)
+          b.className = i === cur ? 'now' : ans[c.id] ? 'done' : ''
+          b.setAttribute('aria-current', i === cur ? 'step' : 'false')
+        })
+      }
+      $$('.st-stamp').forEach((b) => b.setAttribute('aria-disabled', cur < 0 ? 'true' : 'false'))
+      // the answer and the survey's own Next label
+      ui.save(Object.keys(ans).length ? Object.assign({}, ans) : undefined)
+      if (left === 0) ui.status(true)
+      else ui.status(false, CeresNav.fill(D.missing, { n: left }))
+    }
+
+    function press(stampId, btn) {
+      if (busy || cur < 0) return
+      const s = stampOf(stampId); if (!s) return
+      busy = true
+      const card = cards[cur]
+      bounce(btn)
+      const ink = $('#ink'), el = $('#card')
+      // the impression slams onto the card
+      setTimeout(() => {
+        if (skin === 'readiness') ink.innerHTML = `<div class="slam">${gradeImpression(s)}</div>`
+        else {
+          const { w } = impSize(s)
+          const max = el.clientWidth * 0.8
+          const want = tariff ? (narrow() ? 0.6 : 0.62) : (narrow() ? 0.72 : 0.95)
+          const k = Math.min(want, max / w)
+          ink.style.transform = `rotate(${tiltOf(s.id)}deg)`
+          ink.innerHTML = `<div class="slam">${impression(s, Math.round(60 * k))}</div>`
+        }
+        if (!reduce) el.animate([{ transform: 'scale(1)' }, { transform: 'scale(.985) translateY(2px)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'ease-out' })
+      }, reduce ? 0 : 130)
+      const finish = () => {
+        ans[card.id] = s.id
+        landed = landed.filter((id) => id !== card.id).concat(card.id)
+        const was = cur
+        cur = firstOpen(was + 1)
+        busy = false
+        draw(tariff ? 'rise' : 'rise land-' + s.id)
+        if (tariff) { const box = $(`[data-box="${card.id}"]`); box.classList.remove('slam'); void box.offsetWidth; box.classList.add('slam') }
+      }
+      setTimeout(() => {
+        // the card slides onto its stack (8.1: the slip slides back into its line)
+        const target = tariff ? (narrow() ? $(`[data-sq="${card.id}"]`) : $(`[data-box="${card.id}"]`)) : $(`[data-pile="${s.id}"]`)
+        fly($('#card'), target, finish, tariff ? 0 : tiltOf(s.id))
+      }, reduce ? 200 : 720)
+    }
+
+    // take a card back: its stack's top card (or, on the tariff, its line)
+    function takeBack(id) {
+      if (busy || !(id in ans)) return
+      delete ans[id]
+      landed = landed.filter((x) => x !== id)
+      cur = cards.findIndex((c) => c.id === id)
+      draw('back-in')
+    }
+    function jump(id) {
+      if (busy) return
+      if (id in ans) return takeBack(id)
+      const i = cards.findIndex((c) => c.id === id)
+      if (i < 0 || i === cur) return
+      cur = i; draw('rise')
+    }
+
+    ui.obj.addEventListener('click', (e) => {
+      const st = e.target.closest('.st-stamp')
+      if (st) { if (st.getAttribute('aria-disabled') !== 'true') press(st.dataset.choice, st); return }
+      const pile = e.target.closest('.st-pile')
+      if (pile) {
+        const on = landed.filter((id) => ans[id] === pile.dataset.pile)
+        if (on.length) takeBack(on[on.length - 1])
+        return
+      }
+      const line = e.target.closest('[data-line], [data-sq], [data-tl]')
+      if (line) jump(line.dataset.line || line.dataset.sq || line.dataset.tl)
+    })
+    draw('rise')
+  }
+
+  /* ================================================================== 8.1a: tap one line on the tariff card */
+  function pickLine() {
+    const ui = P.mount(step, { objClass: 'st-obj st-tariff' })
+    const from = D.optionsFrom
+    const src = CeresNav.step(from.step)
+    const lines = orderFor(src)                     // the same order the reviewer saw on 8.1
+    const live = (a) => lines.filter((c) => a && from.stamps.indexOf(a[c.id]) >= 0)
+    let got = CeresNav.answers.get(from.step)
+    if (!got || typeof got !== 'object' || !Object.keys(got).length) {
+      got = src.data.sample
+      ui.previewNote(S.sampleNote)
+    } else if (live(got).length < 2) {
+      const k = live(got).length
+      ui.previewNote(`Your ${from.step} has ${k} line${k === 1 ? '' : 's'} stamped Do it or Pilot it, so this would not show in the survey. Sample stamps stand in.`)
+      got = src.data.sample
+    }
+    const ok = live(got)
+    const okIds = new Set(ok.map((c) => c.id))
+    const stampById = {}; src.data.stamps.forEach((s) => { stampById[s.id] = s })
+    let pick = ui.load()
+    if (!okIds.has(pick)) pick = null
+    // phone: Do it first, then Pilot, each in the card order
+    const chips = from.stamps.reduce((acc, sid) => acc.concat(ok.filter((c) => got[c.id] === sid)), [])
+    const tagOf = (c) => { const s = stampById[got[c.id]]; return `<span class="pk-tag">${glyph(s.glyph)}${esc(D.phoneTags[s.id])}</span>` }
+    const impFor = (c) => { const s = stampById[got[c.id]]; return s ? impressionFor(s) : '' }
+    function impressionFor(s) { return impression(s) }
+    ui.obj.innerHTML = `
+      <div class="pk">
+        <div class="tf-card" role="radiogroup" aria-label="${esc(step.question)}">
+          <p class="tf-head">${esc(D.tariffHeader)}</p>
+          <ol class="tf-lines">${lines.map((c, i) => {
+            const on = okIds.has(c.id)
+            return `<li><button type="button" class="tf-line${on ? '' : ' dead'}" role="radio" data-pick="${esc(c.id)}" ${on ? '' : 'disabled aria-disabled="true"'} aria-checked="false"><span class="tf-no">${i + 1}</span><span class="tf-lbl">${esc(c.label)}</span><span class="tf-lead" aria-hidden="true"></span><span class="tf-box">${impFor(c)}</span></button></li>`
+          }).join('')}</ol>
+        </div>
+        <div class="pk-chips" role="radiogroup" aria-label="${esc(step.question)}">${chips.map((c) => `<button type="button" class="pk-chip" role="radio" aria-checked="false" data-pick="${esc(c.id)}">${tagOf(c)}<span>${esc(c.label)}</span></button>`).join('')}</div>
+      </div>`
+    function draw() {
+      $$('[data-pick]').forEach((b) => {
+        const on = b.dataset.pick === pick
+        b.classList.toggle('on', on)
+        b.setAttribute('aria-checked', on ? 'true' : 'false')
+      })
+      ui.save(pick || undefined)
+      if (pick) ui.status(true); else ui.status(false)
+    }
+    ui.obj.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pick]')
+      if (!b || b.disabled || !okIds.has(b.dataset.pick)) return
+      pick = b.dataset.pick; draw()
+    })
+    // arrows move the choice inside a group, as a radio group does
+    ui.obj.addEventListener('keydown', (e) => {
+      const b = e.target.closest('[data-pick]'); if (!b) return
+      const keys = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
+      if (!(e.key in keys)) return
+      const group = $$('[data-pick]:not([disabled])', b.closest('[role="radiogroup"]'))
+      const i = group.indexOf(b); const nx = group[(i + keys[e.key] + group.length) % group.length]
+      if (nx) { e.preventDefault(); nx.focus(); pick = nx.dataset.pick; draw() }
+    })
+    draw()
+  }
+
+  if (D.mode === 'pick-line') pickLine()
+  else deck()
+})()
+</script>
+</body>
+</html>

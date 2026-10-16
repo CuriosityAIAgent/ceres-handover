@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-text: longer notes (10.1, 10.2, 10.4), the competitor sentence (10.3) and, v3, the three client quotes of 2.1
+   (skin 'quotes'). Design v3 §4, chapter X: each note is a ruled, lined field (Source Serif 4, 18 px) with its stem as
+   a label directly above it; a counter from 80% of the limit; dir="auto" with Noto fallbacks; on a phone one note per
+   view with a small "Next note" button. Inputs follow the 10.5 fields (mockups/newspaper.html): label row in Archivo
+   caps, white ground, navy focus.
+   The quotes (2.1, Adam's own question): three cards side by side on a laptop, on a wider frame, each with a large
+   Bodoni opening quote mark, its number and the answer set in Source Serif italic, like a client's words; a live count
+   of what is left ("280 left", amber near the end; typing stops at the limit). On a phone, one quote per view with
+   "Next reason", and the three numbers to move between them. A long quote, or one written as many short lines, sets
+   the type of all three a step smaller (.f1, .f2) until it shows in full, first line included (fitQuotes). */
+:root { --tx-lh: 30px; }
+.tx-obj { padding-top: 18px; }
+.tx-fields { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+.tx-f { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 7px; }
+.tx-lab { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 22px; }
+.tx-stem { font-family: var(--font-text); font-style: italic; font-size: 17px; line-height: 22px; color: var(--ink-2); }
+.tx-count { margin-left: auto; font-family: var(--font-ui); font-size: 12px; font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums;
+  color: var(--muted); opacity: 0; transition: opacity 150ms; white-space: nowrap; }
+.tx-count.on { opacity: 1; }
+.tx-count.over { color: var(--amber); }
+/* the ruled field: one rule under every line of text, scrolling with the text */
+.tx-area {
+  display: block; width: 100%; flex: 0 1 auto; min-height: calc(var(--tx-lh) * 2 + 2px); resize: none;
+  font-family: var(--font-text), "Noto Serif SC", "Noto Serif TC", "Noto Naskh Arabic", Georgia, serif;
+  font-size: 18px; line-height: var(--tx-lh); color: var(--ink);
+  padding: 0 14px; border: 1px solid #CFCAC1; border-radius: 2px; outline: none;
+  background-color: var(--ground);
+  background-image: linear-gradient(to bottom, transparent calc(var(--tx-lh) - 1px), var(--rule-soft) calc(var(--tx-lh) - 1px), var(--rule-soft) var(--tx-lh));
+  background-size: 100% var(--tx-lh); background-attachment: local;
+  box-shadow: 0 1px 0 rgba(13,12,11,0.03);
+  transition: border-color 150ms, box-shadow 150ms;
+  overflow-y: auto;
+}
+.tx-area:hover { border-color: var(--rule); }
+.tx-area:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(20,35,59,0.12); }
+.tx-nn { display: none; }
+
+/* ---------- 10.3: Adam's sentence with the name inside it ---------- */
+.tx-head { padding-bottom: 0; }
+.tx-sent { position: relative; }
+.tx-slot-line { white-space: nowrap; }
+.tx-slot { position: relative; display: inline-block; vertical-align: baseline; margin: 0 2px 0 4px; }
+.tx-name {
+  font: inherit; color: var(--ink); letter-spacing: inherit;
+  font-family: var(--font-text), "Noto Serif SC", "Noto Serif TC", "Noto Naskh Arabic", Georgia, serif;
+  width: 240px; max-width: 100%; padding: 0 2px 2px; margin: 0;
+  border: 0; border-bottom: 2px solid var(--ink); border-radius: 0; background: transparent; outline: none;
+  transition: border-color 150ms, background-color 150ms;
+}
+.tx-name:hover { background: rgba(13,12,11,0.025); }
+.tx-name:focus { border-bottom-color: var(--navy); background: rgba(20,35,59,0.04); }
+.tx-name.chosen { font-style: italic; font-weight: 400; color: var(--forest); }
+.tx-mirror { position: absolute; left: 0; top: 0; visibility: hidden; white-space: pre; font: inherit; padding: 0 2px; pointer-events: none; }
+/* the type-ahead: only after two letters (design: a visible list primes the answer) */
+.tx-ta {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 12; min-width: 100%; width: max-content; max-width: 360px;
+  list-style: none; margin: 0; padding: 4px 0; background: var(--ground); border: 1px solid var(--rule-soft); border-radius: 2px;
+  box-shadow: 0 10px 28px rgba(13,12,11,0.12);
+  font-family: var(--font-ui); font-weight: 400; font-size: 15px; line-height: 20px; letter-spacing: 0; text-align: left; white-space: nowrap;
+}
+.tx-ta[hidden] { display: none; }
+.tx-ta li { padding: 8px 14px; min-height: 36px; color: var(--ink-2); cursor: pointer; }
+.tx-ta li b { font-weight: 600; color: var(--ink); }
+.tx-ta li:hover, .tx-ta li.on { background: var(--marble); color: var(--ink); }
+.tx-chips { flex: none; display: flex; gap: 10px; margin: 0 0 20px; }
+.tx-chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px;
+  font-family: var(--font-ui); font-size: 14px; color: var(--ink-2); background: var(--ground);
+  border: 1px solid var(--rule); border-radius: 2px; cursor: pointer; transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+.tx-chip:hover { border-color: var(--ink); }
+.tx-chip .tk { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--rule); flex: none; display: flex; align-items: center; justify-content: center; }
+.tx-chip .tk svg { opacity: 0; }
+.tx-chip[aria-pressed="true"] { background: #EEF3EF; border-color: var(--forest); color: var(--forest); }
+.tx-chip[aria-pressed="true"] .tk { background: var(--forest); border-color: var(--forest); }
+.tx-chip[aria-pressed="true"] .tk svg { opacity: 1; }
+
+/* ---------- 2.1: three client quotes (skin 'quotes') ---------- */
+@media (min-width: 701px) { body.tx-quotes .c-frame { width: 1100px; } }
+body.tx-quotes .c-i { text-wrap: pretty; }
+.tx-qobj { padding-top: 18px; padding-bottom: 6px; }
+.tx-q3 { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.tx-q3 .tx-qc { gap: 0; }   /* the notes' field gap (.tx-f) never opens up inside a quote card */
+.tx-qc {
+  position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0; cursor: text;
+  padding: 16px 24px 13px; background: var(--ground); border: 1px solid var(--rule-soft); border-radius: 2px;
+  box-shadow: 0 1px 0 rgba(13,12,11,0.04), 0 16px 32px -24px rgba(13,12,11,0.38);
+  transition: border-color 150ms, box-shadow 150ms;
+}
+/* an engraved inner rule, as on the pile cards and the newspaper's quote box */
+.tx-qc::before { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(122,62,18,0.13); border-radius: 1px; pointer-events: none; transition: border-color 150ms; }
+.tx-qc:hover { border-color: var(--rule); }
+.tx-qc:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(20,35,59,0.10), 0 16px 32px -24px rgba(13,12,11,0.38); }
+.tx-qc:focus-within::before { border-color: rgba(20,35,59,0.16); }
+.qc-top { flex: none; position: relative; display: flex; align-items: flex-start; justify-content: space-between; height: 46px; }
+.qc-mark { display: block; height: 46px; margin: -2px 0 0 -5px; font-family: var(--font-display); font-weight: 500; font-size: 84px; line-height: 84px;
+  color: var(--wheat); transition: color 300ms; user-select: none; -webkit-user-select: none; pointer-events: none; }
+.tx-qc.ok .qc-mark { color: var(--harvest); }
+.qc-nos { display: flex; align-items: baseline; gap: 2px; padding-top: 4px; }
+.qc-no { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 22px; letter-spacing: 0.04em; color: var(--bronze); font-variant-numeric: lining-nums; }
+.qc-go { display: none; }
+.qc-area {
+  display: block; width: 100%; flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; resize: none; border: 0; border-radius: 0; outline: none;
+  font-family: var(--font-text), "Noto Serif SC", "Noto Serif TC", "Noto Naskh Arabic", Georgia, serif;
+  font-style: italic; font-size: 18px; line-height: var(--qc-lh); color: var(--ink); caret-color: var(--navy);
+  background-color: transparent; overflow-y: auto; scrollbar-width: thin;
+  background-image: linear-gradient(to bottom, transparent calc(var(--qc-lh) - 1px), rgba(140,133,122,0.22) calc(var(--qc-lh) - 1px), rgba(140,133,122,0.22) var(--qc-lh));
+  background-size: 100% var(--qc-lh); background-attachment: local;
+}
+.tx-q3 { --qc-lh: 28px; }
+.tx-q3.f1 { --qc-lh: 26px; } .tx-q3.f1 .qc-area { font-size: 17px; }
+.tx-q3.f2 { --qc-lh: 24px; } .tx-q3.f2 .qc-area { font-size: 16px; }
+.qc-foot { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-height: 20px; margin-top: 9px; }
+.qc-count { font-family: var(--font-ui); font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: lining-nums tabular-nums;
+  color: var(--muted); white-space: nowrap; transition: color 150ms; }
+.qc-count.near { color: var(--amber); }
+.qc-count.full { font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .tx-qc { animation: qcIn 420ms cubic-bezier(.2,.7,.2,1) backwards; }
+  .tx-qc[data-k="1"] { animation-delay: 70ms; }
+  .tx-qc[data-k="2"] { animation-delay: 140ms; }
+  @keyframes qcIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+}
+
+/* ---------- smallest laptop (1280x650) ---------- */
+@media (min-width: 701px) and (max-height: 720px) {
+  :root { --tx-lh: 28px; }
+  .c-head { padding-top: 20px; }
+  .c-q { font-size: 27px; line-height: 33px; }
+  .c-i { font-size: 15px; line-height: 19px; margin-top: 6px; }
+  .c-note { font-size: 13px; line-height: 17px; }
+  .tx-obj { padding-top: 14px; }
+  .tx-fields { gap: 12px; }
+  .tx-f { gap: 5px; }
+  .tx-stem { font-size: 16px; line-height: 20px; }
+  .tx-area { font-size: 17px; }
+  .tx-chips { margin-bottom: 14px; }
+  .tx-qobj { padding-top: 14px; }
+  .tx-q3 { --qc-lh: 26px; gap: 20px; }
+  .tx-qc { padding: 12px 22px 11px; }
+  .qc-top { height: 38px; }
+  .qc-mark { height: 38px; font-size: 72px; line-height: 72px; }
+  .qc-area { font-size: 17px; }
+  .tx-q3.f1 { --qc-lh: 24px; } .tx-q3.f1 .qc-area { font-size: 16px; }
+  .tx-q3.f2 { --qc-lh: 22px; } .tx-q3.f2 .qc-area { font-size: 15px; }
+  .qc-foot { margin-top: 6px; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 700px) {
+  :root { --tx-lh: 28px; }
+  .tx-obj { padding-top: 14px; }
+  .tx-fields { gap: 10px; }
+  .tx-f { gap: 5px; }
+  .tx-stem { font-size: 16px; line-height: 21px; }
+  .tx-area { padding: 0 12px; }
+  /* one note per view on the same screen (10.1's two notes, 2.1's three quotes) */
+  body.tx-multi .tx-f:not(.tx-cur) { display: none; }
+  .tx-nn { display: block; align-self: flex-end; flex: none; min-height: 40px; padding: 0 18px; font-size: 14px; }
+  .tx-slot-line { display: block; margin-top: 6px; }
+  .tx-slot { margin: 0; width: calc(100% - 12px); }
+  .tx-name { width: 100% !important; }
+  .tx-ta { max-width: 100%; width: 100%; font-size: 16px; }
+  .tx-ta li { min-height: 40px; padding: 10px 14px; }
+  .tx-chips { margin-bottom: 14px; }
+  /* 2.1 on a phone: one quote per view; the band and the card tighten so a full quote has room (its type never goes
+     below 16 px, where a phone would zoom in on the field) */
+  body.tx-quotes .c-head { padding-top: 12px; }
+  body.tx-quotes .c-bridge { font-size: 16px; line-height: 21px; margin-bottom: 4px; }
+  body.tx-quotes .c-bridge::before { margin-top: 9px; }
+  body.tx-quotes .c-i { font-size: 14px; line-height: 18px; margin-top: 5px; }
+  body.tx-quotes .c-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .tx-qobj { padding-top: 10px; padding-bottom: 2px; }
+  .tx-q3 { display: flex; flex-direction: column; gap: 0; --qc-lh: 26px; }
+  .tx-qc { flex: 1 1 auto; padding: 8px 16px 8px; }
+  .qc-top { height: 36px; }
+  .qc-mark { height: 36px; font-size: 68px; line-height: 68px; margin-left: -4px; }
+  .qc-nos { gap: 0; padding-top: 0; margin-right: -8px; }
+  .qc-go, .qc-no.self { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 4px; }
+  .qc-go { border: 0; background: none; cursor: pointer; color: var(--rule); border-radius: 2px; }
+  .qc-go.ok { color: var(--harvest); }
+  .qc-no.self { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 6px; }
+  .qc-area { font-size: 17px; }
+  .tx-q3.f1 { --qc-lh: 24px; } .tx-q3.f1 .qc-area { font-size: 16px; }
+  .tx-q3.f2 { --qc-lh: 22px; } .tx-q3.f2 .qc-area { font-size: 16px; }
+  .qc-foot { justify-content: space-between; margin-top: 6px; min-height: 36px; }
+  .qc-foot .tx-nn { align-self: auto; min-height: 36px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'text') { CeresNav.go(step.id); return }
+  const S = window.CERES_SCRIPT
+  const D = step.data
+  const P = window.CeresPreview
+  const esc = P.esc, glue = P.glue
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const phoneMQ = window.matchMedia('(max-width: 700px)')
+  const isPhone = () => phoneMQ.matches
+  const sentence = D.sentence || null   // 10.3: the question is the sentence, with the name field inside it
+  const quotes = D.skin === 'quotes'    // 2.1: three client quotes
+  if (quotes) document.body.classList.add('tx-quotes')
+
+  const ui = P.mount(step, sentence ? { band: false, objClass: 'tx-obj' } : { objClass: 'tx-obj' + (quotes ? ' tx-qobj' : '') })
+  const saved = ui.load() || {}
+
+  // The counter reads like 10.5's ("72 / 90"); script.js gives the format there only. The quotes count down instead
+  // (D.counter, "280 left"), always shown. The opening quote mark is 10.5's too.
+  const np = CeresNav.step('10.5')
+  const COUNTER = (np && np.data && np.data.counter) || '{n} / {soft}'
+  const MARK = (np && np.data && np.data.marks && np.data.marks[0]) || '“'
+  const counterFrom = D.counterFrom != null ? D.counterFrom : 0.8
+
+  /* ------------------------------------------------------------ the notes (ruled fields) */
+  const notes = D.fields.filter((f) => !f.inSentence)
+  const multi = notes.length > 1   // a phone shows one note (or quote) at a time
+  const rowsFor = (f) => Math.min(D.optional ? 6 : 10, Math.ceil(f.limit / 62) + 1)   // about 62 characters a line at 18 px
+  function noteHTML(f, k) {
+    const label = f.stem
+      ? `<label class="tx-stem" for="f-${esc(f.id)}">${esc(f.stem)}</label>`
+      : ''
+    const aria = f.stem ? '' : ` aria-label="${esc(step.question)}"`
+    return `<div class="tx-f" data-k="${k}" data-id="${esc(f.id)}">
+      <div class="tx-lab">${label}<span class="tx-count" id="c-${esc(f.id)}" aria-live="polite"></span></div>
+      <textarea class="tx-area" id="f-${esc(f.id)}" maxlength="${f.limit}" dir="auto" autocomplete="off" autocapitalize="sentences" spellcheck="true"${aria}
+        style="height:calc(var(--tx-lh) * ${rowsFor(f)} + 10px)"></textarea>
+      ${nextBtn(k)}
+    </div>`
+  }
+  // on a phone, "Next note" / "Next reason" under every note but the last (in the survey, just above the keyboard)
+  const nextBtn = (k) => multi && D.phoneNext && k < notes.length - 1 ? `<button type="button" class="c-btn2 tx-nn" data-k="${k}">${esc(D.phoneNext)}</button>` : ''
+  // 2.1: a quote card. Its number on a laptop; on a phone all three numbers, so a tap moves between the quotes
+  function quoteHTML(f, k) {
+    const id = esc(f.id)
+    const nos = notes.map((g, j) => j === k
+      ? `<span class="qc-no self">${esc(g.stem)}</span>`
+      : `<button type="button" class="qc-no qc-go" data-go="${j}" aria-controls="f-${esc(g.id)}">${esc(g.stem)}</button>`).join('')
+    return `<div class="tx-f tx-qc" data-k="${k}" data-id="${id}">
+      <div class="qc-top"><span class="qc-mark" aria-hidden="true">${esc(MARK)}</span><span class="qc-nos">${nos}</span></div>
+      <textarea class="qc-area" id="f-${id}" maxlength="${f.limit}" dir="auto" autocomplete="off" autocapitalize="sentences" spellcheck="true"
+        aria-label="${esc(step.question + ' ' + f.stem)}" aria-describedby="c-${id}"></textarea>
+      <div class="qc-foot"><span class="qc-count" id="c-${id}"></span>${nextBtn(k)}</div>
+    </div>`
+  }
+
+  /* ------------------------------------------------------------ 10.3: the sentence, the chip, the type-ahead */
+  let names = []
+  if (sentence) {
+    const head = document.createElement('div')
+    head.className = 'c-head tx-head'
+    const post = sentence.post || ''
+    head.innerHTML = `
+      <h1 class="sr">${esc(step.question)}</h1>
+      <div class="c-q tx-sent" id="sent">
+        <label for="f-name" id="pre">${glue(sentence.pre)}</label>
+        <span class="tx-slot-line"><span class="tx-slot" id="slot"><input class="tx-name" id="f-name" type="text" dir="auto"
+          maxlength="${D.fields.find((f) => f.id === sentence.field).limit}" autocomplete="off" autocapitalize="words" spellcheck="false"
+          role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ta" enterkeyhint="next"><span class="tx-mirror" id="mirror" aria-hidden="true"></span><ul class="tx-ta" id="ta" role="listbox" aria-label="${esc(sentence.pre)}" hidden></ul></span>${esc(post)}</span>
+      </div>
+      <p class="c-i">${glue(step.instruction)}</p>
+      <p class="c-note ctx">${glue(S.context)}</p>
+      <p class="pv-note">In the survey the suggestions come from the respondent's own region; the preview has no region, so the Asia, EMEA and Latin America lists are merged.</p>`
+    ui.frame.insertBefore(head, ui.obj)
+    // the three region lists, merged, each name once (Asia, then EMEA, then Latin America)
+    const seen = new Set()
+    Object.keys(D.typeahead).forEach((r) => D.typeahead[r].forEach((n) => { if (!seen.has(n)) { seen.add(n); names.push(n) } }))
+    const chip = D.chip
+    ui.obj.innerHTML = `<div class="tx-chips"><button type="button" class="tx-chip" id="chip" aria-pressed="false"><span class="tk" aria-hidden="true"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4.2 L3.8 7 L9 1" fill="none" stroke="#fff" stroke-width="1.6"/></svg></span>${esc(chip.label)}</button></div>` +
+      `<div class="tx-fields">${notes.map(noteHTML).join('')}</div>`
+  } else if (quotes) {
+    ui.obj.innerHTML = `<div class="tx-fields tx-q3">${notes.map(quoteHTML).join('')}</div>`
+    // a tap anywhere on a card puts the caret in its quote
+    $$('.tx-qc').forEach((card) => card.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button, textarea')) return
+      e.preventDefault()
+      const el = $('textarea', card); el.focus({ preventScroll: true })
+      const n = el.value.length; try { el.setSelectionRange(n, n) } catch (err) { /* ignore */ }
+    }))
+  } else {
+    ui.obj.innerHTML = `<div class="tx-fields">${notes.map(noteHTML).join('')}</div>`
+  }
+  if (multi) document.body.classList.add('tx-multi')
+
+  /* ------------------------------------------------------------ state */
+  const area = (f) => $('#f-' + f.id)
+  const nameEl = $('#f-name')
+  const len = (s) => (s || '').trim().length
+  function values() {
+    const v = {}
+    D.fields.forEach((f) => { const el = f.inSentence ? nameEl : area(f); v[f.id] = el ? el.value : '' })
+    return v
+  }
+  function counters() {
+    notes.forEach((f) => {
+      const el = area(f), c = $('#c-' + f.id)
+      const n = el.value.length
+      if (quotes) {
+        // "280 left", amber in the last tenth; the field stops taking characters at the limit
+        const left = Math.max(0, f.limit - n)
+        c.textContent = D.counter ? CeresNav.fill(D.counter, { n: left }) : CeresNav.fill(COUNTER, { n, soft: f.limit })
+        c.classList.toggle('near', left <= Math.ceil(f.limit * 0.1))
+        c.classList.toggle('full', left === 0)
+        const ok = len(el.value) >= (f.min || 1)
+        el.closest('.tx-qc').classList.toggle('ok', ok)
+        $$('.qc-go[data-go="' + notes.indexOf(f) + '"]').forEach((b) => b.classList.toggle('ok', ok))
+        return
+      }
+      c.textContent = CeresNav.fill(COUNTER, { n, soft: f.limit })
+      c.classList.toggle('on', n >= Math.ceil(f.limit * counterFrom))
+      c.classList.toggle('over', n >= f.limit)
+    })
+  }
+  function report() {
+    const v = values()
+    const any = D.fields.some((f) => len(v[f.id]) > 0)
+    ui.save(any ? v : undefined)
+    if (D.optional) {
+      ui.status(true)
+      ui.label(any ? undefined : D.emptyLabel)   // 10.4: "Skip" while empty
+      return
+    }
+    const ok = D.fields.every((f) => !f.required || len(v[f.id]) >= (f.min || 1))
+    ui.status(ok)
+  }
+
+  // restore the reviewer's own answer
+  D.fields.forEach((f) => {
+    const el = f.inSentence ? nameEl : area(f)
+    if (el && typeof saved[f.id] === 'string') el.value = saved[f.id]
+  })
+
+  /* 2.1: every quote shows in full. A long one, or one written as many short lines, sets the type of all three a step
+     smaller (f1, then f2) until each quote on show fits its card; past that its field scrolls, and leaving it shows its
+     first line again. */
+  function fitQuotes() {
+    if (!quotes) return
+    const box = $('.tx-q3')
+    const shown = notes.map(area).filter((el) => el.offsetParent)
+    const over = () => shown.some((el) => el.scrollHeight > el.clientHeight + 1)
+    box.classList.remove('f1', 'f2')
+    for (const c of ['f1', 'f2']) { if (!over()) break; box.classList.add(c) }
+  }
+
+  notes.forEach((f) => {
+    const el = area(f)
+    el.addEventListener('input', () => { counters(); report(); fitQuotes() })
+    if (quotes) el.addEventListener('blur', () => { el.scrollTop = 0 })
+    el.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd+Enter: on to the next note, or Next
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        const k = notes.indexOf(f)
+        if (k < notes.length - 1) { if (isPhone()) setView(k + 1); area(notes[k + 1]).focus() } else ui.goNext()
+      }
+    })
+  })
+
+  /* ------------------------------------------------------------ phone: one note per view (10.1, 2.1) */
+  let view = 0   // the note on show, from 0
+  function setView(k, focus) {
+    view = k
+    $$('.tx-f').forEach((el) => el.classList.toggle('tx-cur', +el.dataset.k === k))
+    fitQuotes()
+    if (focus) area(notes[k]).focus({ preventScroll: true })
+  }
+  if (multi) {
+    setView(0)
+    // "Next note" / "Next reason" moves on and keeps the keyboard up; the quotes' numbers jump straight to one
+    $$('.tx-nn').forEach((b) => b.addEventListener('click', () => setView(+b.dataset.k + 1, true)))
+    $$('.qc-go').forEach((b) => b.addEventListener('click', () => setView(+b.dataset.go, true)))
+    ui.onNext(() => { if (isPhone() && view < notes.length - 1) { setView(view + 1); return true } return false })
+    ui.onBack(() => { if (isPhone() && view > 0) { setView(view - 1); return true } return false })
+    phoneMQ.addEventListener('change', () => setView(0))
+  }
+
+  /* ------------------------------------------------------------ 10.3 behaviour */
+  if (sentence) {
+    const chipBtn = $('#chip'), ta = $('#ta'), mirror = $('#mirror'), slot = $('#slot'), why = notes[0] && area(notes[0])
+    const chipValue = D.chip.value || D.chip.label   // what the chip writes in the blank (v3: 'no one')
+    const after = D.typeaheadAfter || 2
+    const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    let active = -1, shown = []
+
+    function fit() {
+      // the field grows with the name, from its resting width to the line's width
+      if (isPhone()) { nameEl.style.width = ''; return }
+      mirror.textContent = nameEl.value || ''
+      const room = $('#sent').clientWidth - 16
+      const w = Math.max(240, Math.min(mirror.offsetWidth + 18, room))
+      nameEl.style.width = w + 'px'
+    }
+    function syncChip() {
+      const on = nameEl.value === chipValue
+      chipBtn.setAttribute('aria-pressed', String(on))
+      nameEl.classList.toggle('chosen', on)
+    }
+    function close() { ta.hidden = true; ta.innerHTML = ''; shown = []; active = -1; nameEl.setAttribute('aria-expanded', 'false'); nameEl.removeAttribute('aria-activedescendant') }
+    function open() {
+      const q = fold(nameEl.value.trim())
+      if (q.length < after || nameEl.value === chipValue) return close()
+      const scored = []
+      names.forEach((n, i) => {
+        const f = fold(n)
+        let s = -1
+        if (f.startsWith(q)) s = 0
+        else if (f.split(/[\s&-]+/).some((w) => w.startsWith(q))) s = 1
+        else if (f.includes(q)) s = 2
+        if (s >= 0) scored.push({ n, s, i, at: f.indexOf(q) })
+      })
+      scored.sort((a, b) => a.s - b.s || a.i - b.i)
+      shown = scored.slice(0, 6)
+      if (!shown.length || (shown.length === 1 && fold(shown[0].n) === q)) return close()
+      ta.innerHTML = shown.map((o, k) => {
+        const a = o.n.slice(0, o.at), m = o.n.slice(o.at, o.at + q.length), z = o.n.slice(o.at + q.length)
+        return `<li role="option" id="ta-${k}" aria-selected="false" data-k="${k}">${esc(a)}<b>${esc(m)}</b>${esc(z)}</li>`
+      }).join('')
+      active = -1
+      ta.hidden = false
+      nameEl.setAttribute('aria-expanded', 'true')
+    }
+    function mark(k) {
+      active = k
+      $$('li', ta).forEach((li, i) => { li.classList.toggle('on', i === k); li.setAttribute('aria-selected', String(i === k)) })
+      if (k >= 0) nameEl.setAttribute('aria-activedescendant', 'ta-' + k); else nameEl.removeAttribute('aria-activedescendant')
+    }
+    function pick(k) {
+      const o = shown[k]; if (!o) return
+      nameEl.value = o.n
+      close(); syncChip(); fit(); report()
+    }
+    nameEl.addEventListener('input', () => { open(); syncChip(); fit(); report() })
+    nameEl.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' && !ta.hidden) { e.preventDefault(); mark(Math.min(shown.length - 1, active + 1)) }
+      else if (e.key === 'ArrowUp' && !ta.hidden) { e.preventDefault(); mark(Math.max(-1, active - 1)) }
+      else if (e.key === 'Escape' && !ta.hidden) { e.preventDefault(); close() }
+      else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (!ta.hidden && active >= 0) { pick(active); return }
+        close()
+        if (why) why.focus()
+      } else if (e.key === 'Tab') close()
+    })
+    nameEl.addEventListener('blur', () => setTimeout(close, 120))
+    ta.addEventListener('pointerdown', (e) => {
+      const li = e.target.closest('li'); if (!li) return
+      e.preventDefault()          // keep the focus (and the phone keyboard) in the field
+      pick(+li.dataset.k)
+    })
+    ta.addEventListener('pointermove', (e) => { const li = e.target.closest('li'); if (li) mark(+li.dataset.k) })
+    // the pinned chip fills the field; tapping it again clears it
+    chipBtn.addEventListener('click', () => {
+      nameEl.value = nameEl.value === chipValue ? '' : chipValue
+      close(); syncChip(); fit(); report()
+    })
+    // a tap anywhere on the sentence puts the caret in the field
+    $('#sent').addEventListener('pointerdown', (e) => { if (e.target !== nameEl && !ta.contains(e.target) && e.target.tagName !== 'LABEL') { e.preventDefault(); nameEl.focus() } })
+    syncChip()
+    fit()
+    window.addEventListener('resize', fit)
+    document.fonts && document.fonts.ready.then(fit)
+  }
+
+  counters()
+  report()
+  if (quotes) {
+    fitQuotes()
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitQuotes)
+    window.addEventListener('resize', fitQuotes)
+  }
+
+  // on a laptop the caret waits in the first field; on a phone the keyboard waits for a tap
+  const first = nameEl || (notes[0] && area(notes[0]))
+  if (first && !isPhone()) {
+    const go = () => { first.focus({ preventScroll: true }); const n = first.value.length; try { first.setSelectionRange(n, n) } catch (e) { /* ignore */ } }
+    if (document.fonts) document.fonts.ready.then(go); else go()
+  }
+})()
+</script>
+</body>
+</html>

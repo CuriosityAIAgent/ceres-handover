@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-configure: 2.3 (2.2 in v2), the three ways of investing (Execute, Engage, Entrust), one at a time, three parts
+   each (where it belongs, which products it covers, who the client deals with). No mockup: drawn in the piles' skin (marble piles,
+   the bronze-edged Critical pile) and the checklist's (white options, forest for a choice). It sits on the stage frame,
+   the band in the side column, so the three parts of an item show open side by side with the question. When they
+   cannot all fit (a phone), one part shows at a time and Next and Back walk the parts, then the items. The template
+   owns Next and Back between items and parts, as 3.1 does with its steps. Fit steps (.d1, .d2, .d3) tighten first. */
+.c-frame.stage .c-stage.cf-obj { padding-top: 22px; }
+.cf { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cf > * { flex: none; }
+
+/* ---------- where they are: Execute · Engage · Entrust (1 of 3) ---------- */
+.cf-tabs { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 2px; }
+.cf-tab {
+  all: unset; box-sizing: border-box; display: inline-flex; align-items: baseline; gap: 6px; cursor: pointer;
+  font-family: var(--font-text); font-weight: 600; font-size: 23px; line-height: 30px; letter-spacing: -0.003em; color: var(--rule);
+  padding: 0 1px 1px; border-bottom: 2px solid transparent; transition: color 150ms, border-color 150ms;
+}
+.cf-tab:hover { color: var(--ink-2); }
+.cf-tab:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.cf-tab[aria-current="step"] { color: var(--ink); border-bottom-color: var(--ink); }
+.cf-tab .ok { display: none; width: 15px; height: 15px; flex: none; align-self: center; color: var(--forest); }
+.cf-tab.done .ok { display: block; }
+.cf-tabs .dot { color: var(--rule); font-family: var(--font-text); font-size: 20px; padding: 0 7px; }
+.cf-of { margin-left: 10px; font-family: var(--font-ui); font-size: 13px; color: var(--muted); font-variant-numeric: lining-nums tabular-nums; }
+.cf-hint { margin: 3px 0 0; font-family: var(--font-text); font-style: italic; font-size: 16px; line-height: 22px; color: var(--muted); }
+
+/* ---------- the parts ---------- */
+.cf-parts { margin-top: 18px; display: flex; flex-direction: column; gap: 18px; }
+.cf-part { min-width: 0; }
+.cf-ph { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 10px; margin: 0 0 9px; font-family: var(--font-ui); font-weight: 600; font-size: 15px; line-height: 19px; color: var(--ink); }
+.cf-no { flex: none; width: 13px; font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 19px; color: var(--bronze); font-variant-numeric: lining-nums; }
+.cf-ok { display: none; width: 14px; height: 14px; align-self: center; color: var(--forest); flex: none; }
+.cf-part.done .cf-ok { display: block; }
+.cf-skip { display: none; font-family: var(--font-text); font-style: italic; font-weight: 400; font-size: 14.5px; color: var(--muted); }
+.cf-part.skip .cf-skip { display: inline; }
+.cf-part.skip .cf-pq { color: var(--muted); }
+.cf-part.skip .cf-body { opacity: .38; filter: grayscale(1); pointer-events: none; }
+.cf-none { margin: 0; font-family: var(--font-text); font-style: italic; font-size: 15px; line-height: 20px; color: var(--muted); }
+
+/* part 1: the four piles (2.2's), in a row */
+.cf-piles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cf-pile {
+  all: unset; box-sizing: border-box; position: relative; display: block; min-width: 0; cursor: pointer;
+  padding: 10px 30px 11px 12px; border-radius: 2px; background: var(--marble); border: 1px solid var(--rule-soft);
+  box-shadow: inset 0 2px 3px rgba(13,12,11,.04); transition: border-color 150ms, background-color 150ms, box-shadow 150ms;
+}
+.cf-pile .nm { display: block; font-family: var(--font-ui); font-weight: 600; font-size: 14px; line-height: 18px; color: var(--ink); }
+.cf-pile .gl { display: block; margin-top: 3px; font-family: var(--font-text); font-style: italic; font-size: 13px; line-height: 16px; color: var(--muted); }
+.cf-pile[data-opt="not-hnw"] { background: #E5E3DF; }   /* Not for HNW: a light grey tint only, as on the card sorts */
+.cf-pile[data-opt="critical"] { border-color: rgba(138,97,22,.55); }
+.cf-pile .rd { position: absolute; right: 9px; top: 10px; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--rule); background: #fff; transition: border-color 150ms, box-shadow 150ms, background-color 150ms; }
+@media (hover: hover) { .cf-pile:hover { border-color: var(--rule); } .cf-chip:hover, .cf-opt:hover { border-color: var(--rule); background: #FBFAF8; } }
+.cf-pile:focus-visible, .cf-chip:focus-visible, .cf-opt:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.cf-pile[aria-checked="true"] { background: #EEF3EF; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+.cf-pile[aria-checked="true"] .nm { color: var(--ink); }
+.cf-pile[aria-checked="true"] .rd { border-color: var(--forest); background: var(--forest); box-shadow: inset 0 0 0 3px #fff; }
+
+/* part 2: the products, tick any (chips); part 3: who they deal with, tap one */
+.cf-chips, .cf-opts { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 8px; }
+.cf-chip, .cf-opt {
+  all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 42px; cursor: pointer;
+  padding: 7px 12px 7px 10px; border: 1px solid var(--rule-soft); border-radius: 2px; background: var(--ground); box-shadow: 0 1px 0 var(--rule-soft);
+  font-family: var(--font-ui); color: var(--ink); transition: border-color 150ms, background-color 150ms, box-shadow 150ms;
+}
+.cf-chip .t, .cf-opt .t { display: block; min-width: 0; }
+.cf-chip .l, .cf-opt .l { display: block; font-size: 14.5px; line-height: 18px; text-wrap: balance; }
+.cf-chip .hn, .cf-opt .hn { display: block; margin-top: 2px; font-size: 12.5px; line-height: 15px; color: var(--muted); }
+.cf-chip[aria-checked="true"], .cf-opt[aria-checked="true"] { background: #EEF3EF; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+.tick { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--rule); background: #fff; flex: none; display: flex; align-items: center; justify-content: center; transition: background-color 150ms, border-color 150ms; }
+.tick.sq { border-radius: 4px; }
+.tick svg { width: 15px; height: 15px; }
+.tick path { stroke: #fff; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 160ms ease; }
+[aria-checked="true"] .tick { background: var(--forest); border-color: var(--forest); }
+[aria-checked="true"] .tick path { stroke-dashoffset: 0; transition: stroke-dashoffset 260ms cubic-bezier(.3,.7,.3,1) 40ms; }
+
+/* an item or part arriving */
+.cf-in { animation: cfIn 240ms cubic-bezier(.2,.7,.2,1) both; }
+.cf-in.back { animation-name: cfInBack; }
+@keyframes cfIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes cfInBack { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+
+/* ---------- fit steps (open view) ---------- */
+/* d0: tighter spacing only, so the glosses and hints stay (eight products and part 3's five options on a laptop) */
+.cf.d0 .cf-parts { gap: 14px; margin-top: 14px; }
+.cf.d0 .cf-ph { margin-bottom: 7px; }
+.cf.d1 .cf-pile .gl, .cf.d1 .cf-chip .hn { display: none; }
+.cf.d1 .cf-pile { padding-top: 11px; padding-bottom: 11px; }
+.cf.d1 .cf-parts { gap: 14px; margin-top: 14px; }
+.cf.d1 .cf-ph { margin-bottom: 7px; }
+.cf.d2 .cf-tab { font-size: 21px; line-height: 27px; }
+.cf.d2 .cf-hint { font-size: 15px; line-height: 20px; }
+.cf.d2 .cf-parts { gap: 11px; margin-top: 11px; }
+.cf.d2 .cf-chip, .cf.d2 .cf-opt { min-height: 36px; padding-top: 5px; padding-bottom: 5px; }
+.cf.d2 .cf-opt .hn { font-size: 12px; line-height: 14px; margin-top: 1px; }
+/* d3 (v3: nine products, so three rows of chips, at 1280x650): the last squeeze before one part at a time */
+.cf.d3 .cf-parts { gap: 8px; margin-top: 8px; }
+.cf.d3 .cf-ph { margin-bottom: 5px; }
+.cf.d3 .cf-chip, .cf.d3 .cf-opt { min-height: 33px; padding-top: 4px; padding-bottom: 4px; }
+.cf.d3 .cf-chips, .cf.d3 .cf-opts { gap: 7px; }
+
+/* ---------- one part at a time (a phone, or a laptop the open view does not fit) ---------- */
+.cf.step .cf-part:not(.cur) { display: none; }
+.cf.step .cf-parts { margin-top: 14px; }
+
+/* ---------- short laptops (1280x650): the side column tightens, as on the other stage pages ---------- */
+@media (min-width: 701px) and (max-height: 760px) {
+  .c-frame.stage .c-side { padding-top: 18px; }
+  .c-frame.stage .c-side .c-q { font-size: 23px; line-height: 28px; }
+  .c-i { font-size: 15px; line-height: 19px; margin-top: 6px; }
+  .c-note { font-size: 13px; line-height: 17px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; }
+  .c-frame.stage .c-stage.cf-obj { padding-top: 16px; }
+  .c-frame.stage .c-next-bar { padding-top: 10px; padding-bottom: 12px; }
+  .c-next { min-height: 46px; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 700px) {
+  .c-frame.stage .c-side { padding-top: 14px; }
+  .c-i { font-size: 14px; line-height: 18px; margin-top: 5px; }
+  .c-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; margin-top: 3px; }
+  .c-frame.stage .c-stage.cf-obj { padding-top: 12px; }
+  .c-frame.stage .c-next-bar { padding-top: 8px; padding-bottom: 12px; }
+  .cf-tab { font-size: 18px; line-height: 24px; gap: 4px; }
+  .cf-tab .ok { width: 12px; height: 12px; }
+  .cf-tabs .dot { font-size: 16px; padding: 0 5px; }
+  .cf-of { margin-left: 6px; font-size: 12px; }
+  .cf-hint { font-size: 13.5px; line-height: 18px; margin-top: 2px; }
+  .cf-parts, .cf.step .cf-parts { margin-top: 12px; }
+  .cf-ph { font-size: 14px; line-height: 18px; margin-bottom: 8px; column-gap: 8px; }
+  .cf-no { font-size: 16px; width: 11px; }
+  .cf-piles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .cf-pile { padding: 8px 28px 9px 10px; }
+  .cf-pile .nm { font-size: 13.5px; line-height: 17px; }
+  .cf-pile .gl { font-size: 12px; line-height: 15px; margin-top: 2px; }
+  .cf-pile .rd { right: 8px; top: 9px; width: 15px; height: 15px; }
+  .cf-chips { --cols: 2 !important; gap: 7px; }
+  .cf-opts { --cols: 1 !important; gap: 6px; }
+  .cf-chip, .cf-opt { min-height: 38px; padding: 5px 10px 5px 8px; gap: 9px; }
+  .cf-chip .l, .cf-opt .l { font-size: 13.5px; line-height: 17px; }
+  .cf-chip .hn, .cf-opt .hn { font-size: 11.5px; line-height: 14px; margin-top: 1px; }
+  .tick { width: 18px; height: 18px; }
+  .tick svg { width: 13px; height: 13px; }
+  .cf-none { font-size: 14px; line-height: 19px; }
+  .cf.d1 .cf-pile .gl { display: block; }
+  .cf.d1 .cf-chip, .cf.d1 .cf-opt { min-height: 34px; padding-top: 4px; padding-bottom: 4px; }
+  .cf.d2 .cf-pile .gl, .cf.d2 .cf-chip .hn { display: none; }
+  .cf.d2 .cf-tab { font-size: 17px; line-height: 22px; }
+  .cf.d2 .cf-hint { font-size: 13px; line-height: 17px; }
+  .cf.d2 .cf-chip, .cf.d2 .cf-opt { min-height: 31px; padding-top: 3px; padding-bottom: 3px; }
+}
+@media (prefers-reduced-motion: reduce) { .cf-in { animation: none; } }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'configure') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const P = window.CeresPreview
+  const S = window.CERES_SCRIPT
+  const esc = P.esc, glue = P.glue, fill = CeresNav.fill
+  const D = step.data
+  const T = D.ui || {}
+  const ITEMS = D.items
+  const PARTS = D.parts
+  const PART_BY = Object.fromEntries(PARTS.map((p) => [p.id, p]))
+  const SKIP = D.skipRest || null
+  const $ = (s, r) => (r || document).querySelector(s)
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s))
+  const isPhone = () => window.matchMedia('(max-width: 700px)').matches
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  let kbd = false
+  window.addEventListener('keydown', () => { kbd = true }, true)
+  window.addEventListener('pointerdown', () => { kbd = false }, true)
+
+  const ui = P.mount(step, { stage: true, objClass: 'cf-obj' })
+
+  /* ---------------- part 2's products: only those not put in Not for HNW on 2.2 (its sample if 2.2 was not played) ---------------- */
+  const OFFERED = {}
+  const pv = []
+  PARTS.forEach((p, n) => {
+    if (!p.optionsFrom) return
+    const F = p.optionsFrom
+    const got = CeresNav.value(F.step)
+    const piles = got.value && typeof got.value === 'object' && !Array.isArray(got.value) ? got.value : {}
+    OFFERED[p.id] = p.options.filter((o) => piles[o.id] !== F.excludePile)
+    const src = CeresNav.step(F.step)
+    const pileLabel = ((src && src.data.piles) || []).find((x) => x.id === F.excludePile)
+    pv.push(`Part ${n + 1} lists only the products not put in ${pileLabel ? pileLabel.label : F.excludePile} on ${F.step}.`)
+    if (got.sample) pv.push(S.sampleNote)
+  })
+  if (pv.length) ui.previewNote(pv.join(' '))
+  const optsFor = (p, it) => (OFFERED[p.id] || p.options).filter((o) => !o.only || o.only.includes(it.id))
+
+  /* ---------------- the answers: { execute: { belongs, covers: [], who }, engage: {...}, entrust: {...} } ---------------- */
+  const A = {}
+  ITEMS.forEach((it) => { A[it.id] = {}; PARTS.forEach((p) => { A[it.id][p.id] = p.mode === 'any' ? [] : null }) })
+  const saved = ui.load()
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+    ITEMS.forEach((it) => {
+      const s = saved[it.id]
+      if (!s || typeof s !== 'object') return
+      PARTS.forEach((p) => {
+        const ids = optsFor(p, it).map((o) => o.id)
+        if (p.mode === 'any') A[it.id][p.id] = Array.isArray(s[p.id]) ? ids.filter((x) => s[p.id].includes(x)) : []
+        else A[it.id][p.id] = ids.includes(s[p.id]) ? s[p.id] : null
+      })
+    })
+  }
+  // Not for HNW in part 1 skips the item's other parts (their earlier picks are kept on this page, in case it changes back)
+  const skipped = (it) => !!SKIP && A[it.id][SKIP.part] === SKIP.on
+  const off = (it, p) => skipped(it) && p.id !== SKIP.part
+  function partDone(it, p) {
+    if (off(it, p)) return true
+    const v = A[it.id][p.id]
+    if (p.mode === 'any') { const n = optsFor(p, it).length; return n === 0 || v.length >= Math.min(p.min || 1, n) }
+    return v != null
+  }
+  const missingFor = (p) => (T.missing && T.missing[p.id]) || fill(step.rule, ui.vars)
+  const firstMissing = (it) => PARTS.find((p) => !partDone(it, p)) || null
+  const itemDone = (it) => !firstMissing(it)
+  function save() {
+    const out = {}
+    ITEMS.forEach((it) => {
+      const a = A[it.id]
+      if (!PARTS.some((p) => (p.mode === 'any' ? a[p.id].length : a[p.id] != null))) return
+      const o = {}
+      PARTS.forEach((p) => { o[p.id] = p.mode === 'any' ? (off(it, p) ? [] : a[p.id].slice()) : (off(it, p) ? null : a[p.id]) })
+      out[it.id] = o
+    })
+    ui.save(Object.keys(out).length ? out : undefined)
+  }
+  // an answer restored from storage is filtered to what is offered now (2.2 may have changed): store that cleaned version
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) save()
+
+  /* ---------------- the object ---------------- */
+  const TICK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 L10 17 L19 7.5" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg>'
+  const OK = '<svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 L10 17 L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  const tickHTML = (sq) => `<span class="tick${sq ? ' sq' : ''}" aria-hidden="true">${TICK}</span>`
+  ui.obj.innerHTML = `
+    <div class="cf" id="cf">
+      <div class="cf-top">
+        <div class="cf-tabs" id="cfTabs">${ITEMS.map((it, i) => `${i ? '<span class="dot" aria-hidden="true">·</span>' : ''}<button type="button" class="cf-tab" data-k="${i}">${OK.replace('class="ok"', 'class="ok cf-tick"')}<span>${esc(it.label)}</span></button>`).join('')}<span class="cf-of" id="cfOf"></span></div>
+        <p class="cf-hint" id="cfHint" aria-live="polite"></p>
+      </div>
+      <div class="cf-parts" id="cfParts"></div>
+    </div>`
+  const cf = $('#cf'), tabsEl = $('#cfTabs'), partsEl = $('#cfParts')
+
+  // where we are: the item (k) and, one part at a time, the part (p)
+  const ST = { k: 0, p: 0, mode: 'open', level: '' }
+
+  function partHTML(p, n, it) {
+    const opts = optsFor(p, it)
+    const head = `<h2 class="cf-ph" id="ph-${esc(p.id)}"><span class="cf-no" aria-hidden="true">${n + 1}</span><span class="cf-pq">${glue(p.question)}</span>${OK.replace('class="ok"', 'class="cf-ok"')}<span class="cf-skip">${esc(T.skipped || '')}</span></h2>`
+    let body
+    if (p.optionsFrom && !opts.length) body = `<p class="cf-none">${esc(T.noneLeft || '')}</p>`
+    else if (p.options.some((o) => o.gloss)) {
+      // the four piles: a name and its gloss (the gloss also as a tooltip, for when the fit hides it)
+      body = `<div class="cf-piles" role="radiogroup" aria-labelledby="ph-${esc(p.id)}">${opts.map((o) =>
+        `<button type="button" class="cf-pile" role="radio" aria-checked="false" data-opt="${esc(o.id)}" title="${esc(o.gloss)}" aria-describedby="gl-${esc(o.id)}" tabindex="-1"><span class="rd" aria-hidden="true"></span><span class="nm">${esc(o.label)}</span><span class="gl" id="gl-${esc(o.id)}">${esc(o.gloss)}</span></button>`).join('')}</div>`
+    } else if (p.mode === 'any') {
+      // nine products (v3: ESG and Thematic added) sit three by three rather than leave one alone on a third row
+      const cols = opts.length <= 4 ? opts.length : opts.length <= 6 || opts.length === 9 ? 3 : 4
+      body = `<div class="cf-chips" role="group" aria-labelledby="ph-${esc(p.id)}" style="--cols:${cols}">${opts.map((o) =>
+        `<button type="button" class="cf-chip" role="checkbox" aria-checked="false" data-opt="${esc(o.id)}"${o.hint ? ` title="${esc(o.hint)}"` : ''} tabindex="-1">${tickHTML(true)}<span class="t"><span class="l">${glue(o.label)}</span>${o.hint ? `<span class="hn">${glue(o.hint)}</span>` : ''}</span></button>`).join('')}</div>`
+    } else {
+      const cols = opts.length <= 3 ? opts.length : 2   // longer labels with hints read better two to a row
+      body = `<div class="cf-opts" role="radiogroup" aria-labelledby="ph-${esc(p.id)}" style="--cols:${cols}">${opts.map((o) =>
+        `<button type="button" class="cf-opt" role="radio" aria-checked="false" data-opt="${esc(o.id)}" tabindex="-1">${tickHTML(false)}<span class="t"><span class="l">${glue(o.label)}</span>${o.hint ? `<span class="hn">${glue(o.hint)}</span>` : ''}</span></button>`).join('')}</div>`
+    }
+    return `<section class="cf-part" data-part="${esc(p.id)}" aria-labelledby="ph-${esc(p.id)}">${head}<div class="cf-body">${body}</div></section>`
+  }
+  function drawItem() {
+    const it = ITEMS[ST.k]
+    $('#cfHint').innerHTML = it.hint ? glue(it.hint) : ''
+    $('#cfOf').textContent = fill(T.of || '({k} of {n})', { k: ST.k + 1, n: ITEMS.length })
+    partsEl.innerHTML = PARTS.map((p, n) => partHTML(p, n, it)).join('')
+    markCurrent()
+  }
+  function markCurrent() {
+    $$('.cf-part', partsEl).forEach((sec, n) => sec.classList.toggle('cur', n === ST.p))
+  }
+
+  /* ---------------- paint the state (no rebuild, so focus stays where it is) ---------------- */
+  function paint() {
+    const it = ITEMS[ST.k], a = A[it.id]
+    $$('.cf-part', partsEl).forEach((sec) => {
+      const p = PART_BY[sec.dataset.part]
+      const isOff = off(it, p)
+      sec.classList.toggle('skip', isOff)
+      sec.classList.toggle('done', !isOff && partDone(it, p))
+      const body = $('.cf-body', sec)
+      body.inert = isOff
+      const btns = $$('[data-opt]', sec)
+      btns.forEach((b) => {
+        const on = p.mode === 'any' ? a[p.id].includes(b.dataset.opt) : a[p.id] === b.dataset.opt
+        b.setAttribute('aria-checked', on ? 'true' : 'false')
+      })
+      // roving focus: the chosen one (or the first) takes Tab
+      const focusEl = btns.find((b) => b.getAttribute('aria-checked') === 'true') || btns[0]
+      btns.forEach((b) => { b.tabIndex = b === focusEl ? 0 : -1 })
+    })
+    $$('.cf-tab', tabsEl).forEach((b) => {
+      const k = +b.dataset.k
+      if (k === ST.k) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current')
+      b.classList.toggle('done', itemDone(ITEMS[k]))
+      b.setAttribute('aria-label', `${ITEMS[k].label}${ITEMS[k].hint ? '. ' + ITEMS[k].hint : ''}`)
+    })
+    report()
+  }
+  /* Next always works. Beside it, the survey's own label for what is missing on screen; on the last screen, an earlier
+     item left incomplete is named too ("Execute: Pick where it belongs"). */
+  function report() {
+    const it = ITEMS[ST.k]
+    let miss = null
+    if (ST.mode === 'step') { const p = PARTS[ST.p]; if (!partDone(it, p)) miss = missingFor(p) }
+    else { const p = firstMissing(it); if (p) miss = missingFor(p) }
+    if (!miss && isLast()) {
+      const other = ITEMS.find((x) => !itemDone(x))
+      if (other) miss = `${other.label}: ${missingFor(firstMissing(other))}`
+    }
+    if (miss) ui.status(false, miss); else ui.status(true)
+  }
+  const isLast = () => ST.k === ITEMS.length - 1 && (ST.mode !== 'step' || !PARTS.some((p, n) => n > ST.p && !off(ITEMS[ST.k], p)))
+
+  /* ---------------- choosing ---------------- */
+  function choose(sec, id) {
+    const it = ITEMS[ST.k], p = PART_BY[sec.dataset.part]
+    if (off(it, p)) return
+    if (p.mode === 'any') {
+      const now = new Set(A[it.id][p.id])
+      if (now.has(id)) now.delete(id); else now.add(id)
+      A[it.id][p.id] = optsFor(p, it).map((o) => o.id).filter((x) => now.has(x))   // kept in list order
+    } else A[it.id][p.id] = id
+    paint(); save()
+  }
+  partsEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-opt]'); if (!b) return
+    choose(b.closest('.cf-part'), b.dataset.opt)
+  })
+  // arrow keys move within a group; in a tap-one group the choice follows the focus (as the checklist's radios)
+  partsEl.addEventListener('keydown', (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return   // Alt+arrows belong to the frame (Next / Back)
+    const b = e.target.closest('[data-opt]'); if (!b) return
+    const grp = b.parentElement, btns = $$('[data-opt]', grp), i = btns.indexOf(b)
+    const cols = Math.max(1, Math.round(grp.clientWidth / b.offsetWidth))
+    const d = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols, Home: -i, End: btns.length - 1 - i }[e.key]
+    if (d == null) return
+    e.preventDefault()
+    const j = Math.max(0, Math.min(btns.length - 1, i + d))
+    btns.forEach((x) => { x.tabIndex = -1 }); btns[j].tabIndex = 0; btns[j].focus()
+    if (btns[j].getAttribute('role') === 'radio') choose(btns[j].closest('.cf-part'), btns[j].dataset.opt)
+  })
+  tabsEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.cf-tab'); if (!b) return
+    const k = +b.dataset.k
+    if (k !== ST.k) show(k, 0, k > ST.k ? 1 : -1)
+  })
+
+  /* ---------------- moving between items (and parts, one at a time) ---------------- */
+  function show(k, p, dir) {
+    ST.k = k; ST.p = p
+    drawItem(); paint()
+    if (dir && !reduce) {
+      const el = ST.mode === 'step' ? $('.cf-part.cur', partsEl) : partsEl
+      ;[el, $('#cfHint')].forEach((x) => { if (!x) return; x.classList.remove('cf-in', 'back'); void x.offsetWidth; x.classList.add('cf-in'); if (dir < 0) x.classList.add('back') })
+    }
+    if (kbd) { const f = $('.cf-part' + (ST.mode === 'step' ? '.cur' : '') + ' [data-opt][tabindex="0"]', partsEl); if (f) f.focus({ preventScroll: true }) }
+  }
+  const nextPart = (k, from) => { for (let n = from + 1; n < PARTS.length; n++) if (!off(ITEMS[k], PARTS[n])) return n; return -1 }
+  const prevPart = (k, from) => { for (let n = from - 1; n >= 0; n--) if (!off(ITEMS[k], PARTS[n])) return n; return -1 }
+  ui.onNext(() => {
+    if (ST.mode === 'step') { const n = nextPart(ST.k, ST.p); if (n >= 0) { show(ST.k, n, 1); return true } }
+    if (ST.k < ITEMS.length - 1) { show(ST.k + 1, 0, 1); return true }
+    return false
+  })
+  ui.onBack(() => {
+    if (ST.mode === 'step') { const n = prevPart(ST.k, ST.p); if (n >= 0) { show(ST.k, n, -1); return true } }
+    if (ST.k > 0) {
+      const k = ST.k - 1
+      show(k, ST.mode === 'step' ? prevPart(k, PARTS.length) : 0, -1)
+      return true
+    }
+    return false
+  })
+
+  /* ---------------- fit: all three parts open if they fit, tightening in steps; else one part at a time ---------------- */
+  // On a laptop a view fits only with a little air under its last row (ROOM), so the last option never sits on Next's
+  // divider (a phone's bar has no divider)
+  const LEVELS = [['open', ''], ['open', 'd0'], ['open', 'd1'], ['open', 'd1 d2'], ['open', 'd1 d2 d3'], ['step', ''], ['step', 'd1'], ['step', 'd1 d2']]
+  const ROOM = 12
+  const over = () => cf.scrollHeight > cf.clientHeight + 1 || cf.scrollWidth > cf.clientWidth + 1 ||
+    (!isPhone() && partsEl.getBoundingClientRect().bottom > cf.getBoundingClientRect().bottom - ROOM)
+  function apply(L) { ST.mode = L[0]; ST.level = L[1]; cf.className = 'cf ' + L[0] + (L[1] ? ' ' + L[1] : '') }
+  function fit() {
+    const keep = { k: ST.k, p: ST.p, mode: ST.mode }
+    let pick = LEVELS[LEVELS.length - 1]
+    for (const L of LEVELS) {
+      apply(L)
+      let ok = true
+      // every item, and (one part at a time) every part, must fit, so nothing jumps when they move on
+      for (let k = 0; k < ITEMS.length && ok; k++) {
+        ST.k = k; ST.p = 0; drawItem()
+        const views = L[0] === 'step' ? PARTS.map((_, n) => n) : [0]
+        for (const n of views) { ST.p = n; markCurrent(); if (over()) { ok = false; break } }
+      }
+      if (ok) { pick = L; break }
+    }
+    apply(pick)
+    ST.k = keep.k
+    ST.p = ST.mode === 'step' && keep.mode === 'step' ? keep.p : 0
+    drawItem(); paint()
+  }
+  fit()
+  let rt = 0
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(fit, 80) })
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit)
+})()
+</script>
+</body>
+</html>

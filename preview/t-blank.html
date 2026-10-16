@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-blank: the engraved plaque, one word (1.1, 1.2). Ported from mockups/index.html (renderPlaque); page-only CSS,
+   the shared frame is untouched. The sentence is on the plaque; the instruction and the context note sit under it. */
+.pq-obj { justify-content: center; align-items: center; padding-top: 0; padding-bottom: 44px; }
+.plaque {
+  position: relative; width: 640px; max-width: 100%; min-height: 200px;
+  background: var(--marble); border: 2px solid var(--bronze); border-radius: 2px;
+  padding: 30px 34px; display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 14px 30px rgba(13,12,11,0.10), 0 2px 5px rgba(13,12,11,0.08);
+}
+.plaque::before { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(122,62,18,0.55); pointer-events: none; }
+.rivet { position: absolute; width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--bronze); background: #E2D9CB; }
+.rivet::after { content: ""; position: absolute; left: 1px; right: 1px; top: 2.5px; height: 1px; background: var(--bronze); transform: rotate(-35deg); }
+.rivet.tl { left: 14px; top: 14px; } .rivet.tr { right: 14px; top: 14px; }
+.rivet.bl { left: 14px; bottom: 14px; } .rivet.br { right: 14px; bottom: 14px; }
+.pq-s {
+  flex: 1; min-width: 0; /* the full width of the plaque, whatever the word: the fit measures against it */
+  margin: 0; text-align: center; font-family: var(--font-display); font-weight: 400; font-size: 27px; line-height: 44px;
+  color: #2A2521; text-shadow: 0 1px 0 rgba(255,255,255,0.85); letter-spacing: 0.005em; text-wrap: balance;
+}
+.slot-line { white-space: nowrap; }
+.slot-w { position: relative; display: inline-block; vertical-align: middle; margin: 2px 4px; }
+.slot {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  height: 62px; width: 180px; max-width: 100%; border-radius: 2px;
+  background: #E5DED2; border-bottom: 1.5px solid rgba(122,62,18,0.6);
+  box-shadow: inset 0 2px 4px rgba(13,12,11,0.20), inset 0 -1px 0 rgba(255,255,255,0.6);
+  transition: width 120ms ease-out;
+}
+.slot input, .slot .mirror {
+  font-family: var(--font-display); font-weight: 500; font-size: 50px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.slot input {
+  width: 100%; height: 100%; border: 0; background: transparent; outline: none; padding: 0 0 0 0.08em; margin: 0;
+  text-align: center; color: var(--ink); caret-color: var(--bronze); text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+}
+.slot .mirror { position: absolute; visibility: hidden; white-space: pre; left: 0; top: 0; }
+.slot-w.focus .slot { box-shadow: inset 0 2px 4px rgba(13,12,11,0.20), inset 0 -1px 0 rgba(255,255,255,0.6), 0 0 0 2px rgba(20,35,59,0.18); }
+.oneword {
+  position: absolute; left: 50%; bottom: -12px; z-index: 2; transform: translate(-50%, -3px); opacity: 0; pointer-events: none;
+  font-family: var(--font-ui); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; line-height: 22px; color: var(--paper);
+  background: var(--bronze); padding: 0 9px; border-radius: 2px; white-space: nowrap; transition: opacity 150ms, transform 150ms; text-shadow: none;
+}
+.oneword.on { opacity: 1; transform: translate(-50%, 0); }
+.pq-meta { margin-top: 28px; text-align: center; }
+.pq-meta .c-i { margin: 0; }
+.pq-meta .c-note { margin-top: 4px; }
+.pq-meta .pv-note { margin-top: 8px; }
+
+@media (max-width: 700px) {
+  .pq-obj { justify-content: flex-start; padding-top: 22px; padding-bottom: 0; }
+  .plaque { width: 100%; min-height: 170px; padding: 22px 18px; }
+  .rivet { width: 6px; height: 6px; } .rivet::after { top: 2px; }
+  .rivet.tl { left: 11px; top: 11px; } .rivet.tr { right: 11px; top: 11px; }
+  .rivet.bl { left: 11px; bottom: 11px; } .rivet.br { right: 11px; bottom: 11px; }
+  .pq-s { font-size: 18px; line-height: 30px; }
+  .slot-line { display: block; margin: 4px 0 2px; }
+  .slot-w { margin: 2px 0; }
+  .slot { height: 40px; width: 104px; }
+  .slot input, .slot .mirror { font-size: 29px; }
+  .pq-meta { margin-top: 30px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'blank') { CeresNav.go(step.id); return }   // a wrong page for this id: send it to its own
+  const P = window.CeresPreview
+  const esc = P.esc, glue = P.glue
+  const $ = (s, r) => (r || document).querySelector(s)
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const narrow = () => window.matchMedia('(max-width: 700px)').matches
+  const D = step.data
+  const MAX = D.maxChars || 24, MIN = D.minLetters || 2
+  // opened from "Change a word" on the keep step: Next and Back return there (design §4, keeping the words)
+  let fromKeep = false
+  try { fromKeep = new URLSearchParams(window.location.search).get('from') === 'keep' } catch (e) { fromKeep = false }
+
+  function anim(el, kf, o, then) {
+    if (!el || reduce) { if (then) then(); return null }
+    const a = el.animate(kf, Object.assign({ fill: 'backwards' }, o))
+    if (then) a.onfinish = then
+    return a
+  }
+
+  // the band is drawn on the plaque itself (questionIsObject), so the frame draws none
+  const ui = P.mount(step, { band: false, objClass: 'pq-obj' })
+  const dot = D.post === '.'
+  const postHTML = dot ? '' : ' ' + glue(D.post)
+  const label = `${step.question} ${step.instruction}`
+  const slot = `<span class="slot-w" id="slotW"><span class="slot" id="slot"><span class="mirror" id="mirror" aria-hidden="true"></span><input id="word" type="text" dir="auto" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next" aria-label="${esc(label)}"></span></span>`
+  const slotHTML = `<span class="slot-line">${slot}${dot ? '.' : ''}</span>`
+  const notes = (step.notes || []).filter(Boolean).map((n) => `<p class="c-note">${glue(n)}</p>`).join('')
+  const keepFrom = ((CeresNav.step('keep') || {}).data || {}).from || []
+  const yourWords = keepFrom.length === 1 ? 'your word' : `your ${['', 'one', 'two', 'three', 'four', 'five'][keepFrom.length] || keepFrom.length} words`
+  const pvText = [step.previewCondition, step.previewNote, fromKeep ? `Changing a word from ${yourWords}: Next and Back return there.` : ''].filter(Boolean).join(' ')
+  ui.obj.insertAdjacentHTML('beforebegin', `<h1 class="sr">${glue(step.question)}</h1>`)
+  ui.obj.innerHTML = `
+    <div class="plaque" id="plaque">
+      <i class="rivet tl"></i><i class="rivet tr"></i><i class="rivet bl"></i><i class="rivet br"></i>
+      <span class="oneword" id="oneword" role="status" aria-live="assertive"></span>
+      <p class="pq-s" id="pqs">${glue(D.pre)} ${slotHTML}${postHTML}</p>
+    </div>
+    <div class="pq-meta">
+      <p class="c-i">${glue(step.instruction)}</p>
+      <p class="c-note ctx">${glue(CERES_SCRIPT.context)}</p>
+      ${notes}
+      ${pvText ? `<p class="pv-note">${esc(pvText)}</p>` : ''}
+    </div>`
+
+  /* ---------------- one word: cleaned after composition ends (from the mockup) ---------------- */
+  function cleanWord(v) {
+    let s = v.replace(/^\s+/, '')
+    let cut = false
+    const m = s.search(/\s/)
+    if (m >= 0) { cut = true; s = s.slice(0, m) }
+    let chars = Array.from(s)
+    const kept = chars.filter((ch) => /[\p{L}\p{M}\p{N}'’\-]/u.test(ch))
+    if (kept.length !== chars.length) cut = true
+    let hy = false
+    chars = kept.filter((ch) => (ch === '-' ? (hy ? false : (hy = true)) : true))
+    if (chars.length > MAX) { chars = chars.slice(0, MAX); cut = true }
+    return { s: chars.join(''), cut }
+  }
+  const letters = (s) => Array.from(s).filter((ch) => /[\p{L}\p{N}]/u.test(ch)).length
+  const stored = (s) => s.replace(/^['’\-]+|['’\-]+$/g, '').toLowerCase()
+
+  const input = $('#word'), mirror = $('#mirror'), slotEl = $('#slot'), plaque = $('#plaque'), one = $('#oneword')
+  const saved = ui.load()
+  const orig = saved && typeof saved === 'object' ? saved : undefined
+  input.value = orig && orig.raw ? cleanWord(String(orig.raw)).s : ''
+  let composing = false, oneTimer = 0
+
+  const fit = () => {
+    const c = narrow() ? { max: 29, min: 18, empty: 104 } : { max: 50, min: 30, empty: 180 }
+    // the room on the line: the slot's own side margins, and the full stop that rides with it (post: '.', 1.1 and 1.2)
+    const maxW = $('#pqs').clientWidth - (narrow() ? 0 : 8) - (dot ? 12 : 0)
+    mirror.textContent = input.value
+    let size = c.max, track = 0.08
+    const setM = () => { mirror.style.fontSize = size + 'px'; mirror.style.letterSpacing = track + 'em' }
+    setM()
+    const over = () => input.value && mirror.offsetWidth > maxW - 22
+    while (over() && size > c.min) { size--; setM() }
+    // a very long word: tighten the tracking, then (phone only) go a little under the floor so all 24 letters show
+    while (over() && track > 0.02) { track = +(track - 0.02).toFixed(2); setM() }
+    while (over() && size > c.min - 4) { size--; setM() }
+    input.style.fontSize = size + 'px'; input.style.letterSpacing = track + 'em'
+    const w = input.value ? Math.max(c.empty, mirror.offsetWidth + 28) : c.empty
+    slotEl.style.width = Math.min(w, maxW) + 'px'
+  }
+  // Next always works; the survey's own label shows beside it until the word has two letters
+  const refresh = () => {
+    if (letters(input.value) >= MIN) ui.status(true)
+    else ui.status(false, D.missing)
+  }
+  const store = () => {
+    const raw = input.value
+    if (!raw) ui.save(undefined)
+    else ui.save({ raw, word: stored(raw) })
+  }
+  const oneWord = () => {
+    one.textContent = D.flash
+    const pr = plaque.getBoundingClientRect(), sr = slotEl.getBoundingClientRect()
+    one.style.left = (sr.left + sr.width / 2 - pr.left) + 'px'
+    one.classList.add('on')
+    anim(plaque, [{ transform: 'translateX(0)' }, { transform: 'translateX(-2px)' }, { transform: 'translateX(2px)' }, { transform: 'translateX(-2px)' }, { transform: 'translateX(2px)' }, { transform: 'translateX(0)' }], { duration: 300, easing: 'linear' })
+    clearTimeout(oneTimer)
+    oneTimer = setTimeout(() => { one.classList.remove('on'); one.textContent = '' }, 2000)
+  }
+  let prev = input.value, cutAt = 0
+  const apply = () => {
+    let { s, cut } = cleanWord(input.value)
+    // a space was just refused: letters typed straight after it ("trust me") are refused too, until they delete
+    if (cutAt && Date.now() - cutAt < 2000 && s.length > prev.length && s.startsWith(prev)) { s = prev; cut = true }
+    else if (s.length < prev.length) cutAt = 0
+    if (s !== input.value) { input.value = s; input.setSelectionRange(s.length, s.length) }
+    if (cut) { oneWord(); cutAt = Date.now() }
+    prev = s
+    store(); fit(); refresh()
+  }
+  input.addEventListener('compositionstart', () => { composing = true })
+  input.addEventListener('compositionend', () => { composing = false; apply() })
+  input.addEventListener('input', (e) => { if (composing || e.isComposing) return; apply() })
+  input.addEventListener('focus', () => $('#slotW').classList.add('focus'))
+  input.addEventListener('blur', () => $('#slotW').classList.remove('focus'))
+  // Enter acts as Next (in the preview, even before the word is complete)
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); ui.goNext() }
+  })
+  plaque.addEventListener('pointerdown', (e) => { if (e.target !== input) { e.preventDefault(); input.focus() } })
+
+  if (fromKeep) {
+    ui.onNext(() => { CeresNav.go('keep'); return true })
+    // backing out of a change: a word under two letters goes back to what it was
+    ui.onBack(() => {
+      if (letters(input.value) < MIN) ui.save(orig)
+      CeresNav.go('keep'); return true
+    })
+  }
+
+  window.addEventListener('resize', fit)
+  fit(); refresh()
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit)
+  anim(plaque, [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.2,.7,.2,1)' })
+  input.focus({ preventScroll: true })
+  const L = input.value.length; input.setSelectionRange(L, L)
+})()
+</script>
+</body>
+</html>

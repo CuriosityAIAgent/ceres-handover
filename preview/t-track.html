@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ceres preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="preview.css">
+<script src="script.js"></script>
+<script src="nav.js"></script>
+<script src="frame.js"></script>
+<style>
+/* t-track: ordered stops on a line (2.4, 2.4a, 6.2b, 7.1, 7.3, 8.4a, 8.4b, 9.4a). The Ascent's track (src/v2/ui/
+   templates/Track.tsx) in the Ceres skin: a readout above, the line with its stops, the labels under the stops with a
+   one-line hint under each. Nothing is chosen until the first tap; the handle appears where you tap and can be dragged.
+   7.1 has eleven numeric stops and a live readout. On a phone, stops with words run down a vertical line.
+   `ends` (7.1, and v3's 2.4) name the two ends of the scale: above the line, left and right; on a phone's vertical
+   line, above the first stop and below the last. Before the first tap the readout keeps its place as a quiet empty
+   slot (a faint dashed edge, nothing in it). */
+.tk { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tk > * { flex: none; }
+
+/* the readout */
+.tk-read { background: var(--ground); border: 1px solid var(--rule-soft); border-radius: 2px; box-shadow: 0 1px 0 var(--rule-soft); text-align: center; padding: 14px 16px 13px;
+  display: flex; flex-direction: column; justify-content: center; }   /* its height is kept for the longest answer (fit) */
+.tk-read .rv { margin: 0; font-family: var(--font-text); font-weight: 600; font-size: 30px; line-height: 38px; color: var(--ink); text-wrap: balance; }
+.tk-read .rv.unset { color: var(--rule); font-weight: 400; }
+.tk-read.unset { background: transparent; border-style: dashed; border-color: var(--rule-soft); box-shadow: none; }
+.tk-read .rh { margin: 2px 0 0; font-family: var(--font-ui); font-size: 14px; line-height: 18px; color: var(--muted); min-height: 18px; }
+.tk.nohint .tk-read .rh { display: none; }
+.tk-read .rh:empty { display: none; }   /* the box keeps its height (fit), so an answer without a hint sits in the middle */
+.tk-read .rv.pop { animation: pop 260ms cubic-bezier(.2,.7,.2,1); }
+@keyframes pop { from { opacity: .35; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* ends (7.1, 2.4) */
+.tk-ends { display: flex; justify-content: space-between; gap: 24px; margin-top: 18px; font-family: var(--font-ui); font-size: 12px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.tk-ends span:first-child, .tk-vend.a { color: var(--olive); }
+.tk-ends span:last-child, .tk-vend.b { color: var(--harvest); }
+.tk-ends span:last-child { text-align: right; }
+.tk-vend { display: none; }
+
+/* the line */
+.tk-line { position: relative; height: 64px; margin-top: 14px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.tk-ends + .tk-line { margin-top: 2px; }
+.tk-rail, .tk-fill { position: absolute; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; }
+.tk-rail { background: var(--rule-soft); }
+.tk-fill { background: var(--navy); transition: left 160ms, width 160ms; }
+.tk-dot { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 1.5px solid var(--rule); background: var(--paper); transition: background-color 150ms, border-color 150ms; }
+.tk-dot.on { background: var(--navy); border-color: var(--navy); }
+.tk-handle { position: absolute; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 2px solid var(--navy); background: var(--ground); box-shadow: 0 2px 8px rgba(13,12,11,0.22); display: none; pointer-events: none; transition: left 180ms cubic-bezier(.2,.7,.2,1), top 180ms cubic-bezier(.2,.7,.2,1); }
+.tk-handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--navy); }
+.tk.set .tk-handle { display: block; }
+.tk.drag .tk-handle, .tk.drag .tk-fill { transition: none; }
+/* 7.1: the split, app and web on the left, a banker on the right */
+.tk.num .tk-fill { background: var(--olive); }
+.tk.num.set .tk-rail { background: var(--wheat-light); }
+.tk.num .tk-dot.on { background: var(--olive); border-color: var(--olive); }
+.tk.num .tk-handle { border-color: var(--ink); }
+.tk.num .tk-handle::after { background: var(--ink); }
+
+/* the stops: label and hint under each, one column per stop */
+.tk-stops { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.tk-stop {
+  display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; padding: 4px 4px 6px;
+  border: 0; border-radius: 2px; background: transparent; cursor: pointer; font-family: var(--font-ui); color: var(--ink-2);
+}
+@media (hover: hover) { .tk-stop:hover .l { color: var(--ink); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; } }
+.tk-stop:focus-visible { outline: 2px solid var(--navy); outline-offset: 0; }
+.tk-stop .l { display: block; font-size: 15px; line-height: 19px; text-wrap: balance; }
+.tk-stop .hn { display: block; margin-top: 3px; font-size: 12.5px; line-height: 16px; color: var(--muted); text-wrap: balance; }
+.tk-stop[aria-checked="true"] .l { color: var(--navy); font-weight: 600; }
+.tk.allbold .tk-stop .l { font-weight: 600; }   /* fit: measures the stops as if each were chosen */
+.tk.num .tk-stop .l { font-family: var(--font-display); font-size: 15px; font-variant-numeric: lining-nums; }
+.tk.num .tk-stop[aria-checked="true"] .l { color: var(--ink); }
+
+/* fit steps */
+.d1 .tk-read { padding: 9px 14px 8px; }
+.d1 .tk-read .rv { font-size: 25px; line-height: 31px; }
+.d1 .tk-line { height: 52px; margin-top: 8px; }
+.d2 .tk-read .rv { font-size: 21px; line-height: 27px; }
+.d2 .tk-read .rh { font-size: 13px; line-height: 16px; min-height: 0; }
+.d2 .tk-stop .l { font-size: 14px; line-height: 17px; }
+.d2 .tk-stop .hn { font-size: 12px; line-height: 15px; }
+.d3 .tk-read .rh { display: none; }
+.d3 .tk-line { height: 44px; margin-top: 4px; }
+
+/* ---------- short laptop ---------- */
+@media (min-width: 701px) and (max-height: 720px) {
+  .c-obj { padding-top: 14px; }
+  .c-next-bar { padding-top: 10px; padding-bottom: 12px; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 700px) {
+  .c-head { padding-top: 14px; }
+  .c-bridge { font-size: 16px; line-height: 21px; margin-bottom: 3px; }
+  .c-bridge::before { margin-top: 9px; }
+  .c-i { font-size: 14px; line-height: 18px; margin-top: 5px; }
+  .c-note { font-size: 12.5px; line-height: 16px; margin-top: 2px; }
+  .pv-note { font-size: 12.5px; line-height: 16px; margin-top: 3px; }
+  .c-obj { padding-top: 12px; }
+  .c-next-bar { padding-top: 8px; padding-bottom: 12px; }
+  .tk-read { padding: 10px 12px 9px; }
+  .tk-read .rv { font-size: 22px; line-height: 28px; }
+  .tk-read .rh { font-size: 12.5px; line-height: 16px; }
+  .tk-ends { font-size: 10.5px; letter-spacing: 0.1em; margin-top: 14px; }
+  .tk.num .tk-stop { padding: 4px 0; }
+  .tk.num .tk-stop .l { font-size: 11px; letter-spacing: -0.01em; }
+  .tk-line { height: 56px; }
+
+  /* stops with words: a vertical line, labels beside it */
+  .tk.vert .tk-read { display: none; }
+  .tk.vert .tk-body { position: relative; display: grid; grid-template-columns: 44px 1fr; }
+  .tk.vert .tk-line { position: absolute; left: 0; top: 0; bottom: 0; width: 44px; height: auto; margin: 0; z-index: 1; }
+  .tk.vert .tk-rail, .tk.vert .tk-fill { top: auto; left: 50%; width: 4px; height: auto; margin: 0 0 0 -2px; }
+  .tk.vert .tk-fill { transition: top 160ms, height 160ms; }
+  .tk.vert .tk-dot { left: 50%; }
+  .tk.vert .tk-handle { left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; }
+  .tk.vert .tk-stops { grid-column: 2; display: flex; flex-direction: column; }
+  .tk.vert .tk-stop { flex: 1 0 auto; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; min-height: 44px; padding: 4px 6px 4px 8px; }
+  .tk.vert .tk-stop + .tk-stop { border-top: 1px solid var(--rule-soft); border-radius: 0; }
+  .tk.vert .tk-stop .l { font-size: 15.5px; line-height: 19px; }
+  .tk.vert .tk-stop .hn { margin-top: 1px; font-size: 12.5px; line-height: 15px; }
+  .tk.vert .tk-stop[aria-checked="true"] { background: #EEF2F7; }
+  .tk.vert .tk-ends { display: none; }
+  .tk.vert .tk-vend { display: block; margin: 0; padding: 0 0 0 52px; font-family: var(--font-ui); font-size: 10.5px; line-height: 14px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .tk.vert .tk-vend.a { margin-bottom: 4px; }
+  .tk.vert .tk-vend.b { margin-top: 4px; }
+  .tk.vert .d1 .tk-stop, .d1.tk.vert .tk-stop { min-height: 40px; }
+  /* the later fit steps on the vertical line (the laptop's d2 type sizes lose to the phone's own) */
+  .tk.vert.d2 .tk-stop .l { font-size: 14.5px; line-height: 17px; }
+  .tk.vert.d2 .tk-stop .hn { font-size: 12px; line-height: 14px; }
+  .tk.vert.d3 .tk-stop { min-height: 36px; padding-top: 2px; padding-bottom: 2px; }
+  .tk.vert.d3 .tk-vend.a { margin-bottom: 2px; }
+  .tk.vert.d3 .tk-vend.b { margin-top: 2px; }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  'use strict'
+  const step = CeresNav.current()
+  if (step.template !== 'track') { CeresNav.go(step.id); return }
+  const P = window.CeresPreview
+  const esc = P.esc, glue = P.glue
+  const D = step.data
+  const ui = P.mount(step, { objClass: 'tk-obj' })
+  const stops = D.stops
+  const n = stops.length
+  const num = !!D.numeric
+  const phone = () => window.matchMedia('(max-width: 700px)').matches
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  // 8.4a fires only on "A revenue share for some years"; say so when the reviewer's own 8.4 would skip it
+  if (step.parent === '8.4' && step.previewCondition) {
+    const got = CeresNav.answers.get('8.4')
+    const par = CeresNav.step('8.4')
+    if (got && got !== par.data.sample) {
+      const o = par.data.options.find((x) => x.id === got)
+      if (o) ui.previewNote(`Your answer to 8.4 is “${o.label}”, so this would not show in the survey.`)
+    }
+  }
+
+  /* ---------------- draw ---------------- */
+  const root = document.createElement('div')
+  root.className = 'tk' + (num ? ' num' : '') + (stops.some((s) => s.hint) ? '' : ' nohint')
+  root.style.setProperty('--n', n)
+  const aria = CeresNav.fill(step.question || '', ui.vars)
+  root.innerHTML = `
+    <div class="tk-read unset" aria-live="polite"><p class="rv unset" id="rv"></p><p class="rh" id="rh"></p></div>
+    ${D.ends ? `<div class="tk-ends" aria-hidden="true"><span>‹ ${esc(D.ends[0])}</span><span>${esc(D.ends[1])} ›</span></div>` : ''}
+    ${D.ends && !num ? `<p class="tk-vend a" aria-hidden="true">${esc(D.ends[0])}</p>` : ''}
+    <div class="tk-body">
+      <div class="tk-line" id="line" aria-hidden="true">
+        <span class="tk-rail" id="rail"></span><span class="tk-fill" id="fill"></span>
+        ${stops.map((s, i) => `<span class="tk-dot" data-i="${i}"></span>`).join('')}
+        <span class="tk-handle" id="handle"></span>
+      </div>
+      <div class="tk-stops" role="radiogroup" aria-label="${esc(aria)}">
+        ${stops.map((s, i) => `<button type="button" class="tk-stop" role="radio" aria-checked="false" data-zone="${esc(s.id)}" tabindex="${i === 0 ? 0 : -1}">
+          <span class="l">${glue(s.label)}</span>${s.hint ? `<span class="hn">${glue(s.hint)}</span>` : ''}</button>`).join('')}
+      </div>
+    </div>
+    ${D.ends && !num ? `<p class="tk-vend b" aria-hidden="true">${esc(D.ends[1])}</p>` : ''}`
+  ui.obj.appendChild(root)
+  const $ = (s) => root.querySelector(s)
+  const line = $('#line'), rail = $('#rail'), fill = $('#fill'), handle = $('#handle'), rv = $('#rv'), rh = $('#rh')
+  const dots = Array.from(root.querySelectorAll('.tk-dot'))
+  const btns = Array.from(root.querySelectorAll('.tk-stop'))
+
+  // words on a phone run down a vertical line (numbers stay across)
+  const vert = () => !num && phone()
+
+  /* ---------------- geometry: each stop sits at the centre of its label ---------------- */
+  let pos = []   // px along the line, per stop
+  function measure() {
+    root.classList.toggle('vert', vert())
+    const lr = line.getBoundingClientRect()
+    pos = btns.map((b) => {
+      const r = b.getBoundingClientRect()
+      return vert() ? r.top + r.height / 2 - lr.top : r.left + r.width / 2 - lr.left
+    })
+    const a = pos[0], z = pos[n - 1]
+    if (vert()) {
+      rail.style.cssText = `top:${a}px;height:${z - a}px`
+      dots.forEach((d, i) => { d.style.left = ''; d.style.top = pos[i] + 'px' })
+    } else {
+      rail.style.cssText = `left:${a}px;width:${z - a}px`
+      dots.forEach((d, i) => { d.style.top = ''; d.style.left = pos[i] + 'px' })
+    }
+    paint(live != null ? live : null)
+  }
+
+  /* ---------------- state ---------------- */
+  let at = null        // chosen index
+  let live = null      // px while dragging
+  const saved = ui.load()
+  if (saved !== undefined && saved !== null) {
+    const i = stops.findIndex((s) => s.id === String(saved))
+    if (i >= 0) at = i
+  }
+
+  function readout(i) {
+    rv.parentNode.classList.toggle('unset', i == null)
+    if (i == null) { rv.textContent = ''; rv.className = 'rv unset'; rh.textContent = ''; return }
+    const s = stops[i]
+    const text = num ? CeresNav.fill(D.readout, { a: +s.id, b: D.max - +s.id }) : s.label
+    if (rv.textContent !== text) {
+      rv.textContent = text; rv.className = 'rv'
+      if (!reduce) { void rv.offsetWidth; rv.classList.add('pop') }
+    }
+    rh.textContent = !num && s.hint ? s.hint : ''
+  }
+  function paint(px) {
+    const set = at != null
+    root.classList.toggle('set', set)
+    const cur = px != null ? px : set ? pos[at] : null
+    const a = pos[0]
+    if (cur == null) { fill.style.cssText = 'display:none' }
+    else if (vert()) { fill.style.cssText = `top:${a}px;height:${Math.max(0, cur - a)}px`; handle.style.top = cur + 'px'; handle.style.left = '' }
+    else { fill.style.cssText = `left:${a}px;width:${Math.max(0, cur - a)}px`; handle.style.left = cur + 'px'; handle.style.top = '' }
+    dots.forEach((d, i) => d.classList.toggle('on', set && pos[i] <= cur + 0.5))
+    btns.forEach((b, i) => {
+      b.setAttribute('aria-checked', set && i === at ? 'true' : 'false')
+      b.tabIndex = (set ? i === at : i === 0) ? 0 : -1
+    })
+  }
+  function choose(i) {
+    if (i == null || i < 0 || i >= n) return
+    at = i
+    readout(i); paint(live)
+    ui.save(num ? +stops[i].id : stops[i].id)
+    ui.status(true)
+  }
+
+  /* ---------------- pointer: tap or drag anywhere on the line ---------------- */
+  function nearest(px) {
+    let best = 0
+    pos.forEach((p, i) => { if (Math.abs(p - px) < Math.abs(pos[best] - px)) best = i })
+    return best
+  }
+  function local(e) {
+    const r = line.getBoundingClientRect()
+    const v = vert() ? e.clientY - r.top : e.clientX - r.left
+    return Math.max(pos[0], Math.min(pos[n - 1], v))
+  }
+  let dragId = null
+  line.addEventListener('pointerdown', (e) => {
+    if (e.button != null && e.button > 0) return
+    e.preventDefault()
+    dragId = e.pointerId
+    try { line.setPointerCapture(e.pointerId) } catch (err) { /* ignore */ }
+    root.classList.add('drag')
+    live = local(e)
+    choose(nearest(live))
+  })
+  line.addEventListener('pointermove', (e) => {
+    if (dragId !== e.pointerId) return
+    live = local(e)
+    const i = nearest(live)
+    if (i !== at) choose(i); else paint(live)
+  })
+  const end = (e) => {
+    if (dragId !== e.pointerId) return
+    dragId = null; live = null
+    root.classList.remove('drag')
+    paint(null)
+  }
+  line.addEventListener('pointerup', end)
+  line.addEventListener('pointercancel', end)
+
+  /* ---------------- the labels: tap one; arrows move along the line ---------------- */
+  btns.forEach((b, i) => {
+    b.addEventListener('click', () => choose(i))
+    b.addEventListener('keydown', (e) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return   // Alt+arrows belong to the frame (Next / Back)
+      const fwd = e.key === 'ArrowRight' || e.key === 'ArrowDown'
+      const back = e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+      let j = null
+      if (fwd) j = at == null ? 0 : Math.min(n - 1, at + 1)
+      else if (back) j = at == null ? 0 : Math.max(0, at - 1)
+      else if (e.key === 'Home') j = 0
+      else if (e.key === 'End') j = n - 1
+      if (j == null) return
+      e.preventDefault()
+      choose(j); btns[j].focus()
+    })
+  })
+
+  /* ---------------- start ---------------- */
+  readout(at)
+  if (at != null) ui.status(true); else ui.status(false, D.missing || undefined)
+
+  /* ---------------- fit: tighten in steps until nothing clips ---------------- */
+  // The readout keeps the height of its longest answer, so a tap never pushes the line and the stops down (v3: 2.4's
+  // "A model portfolio, with a few approved changes" takes two lines; at 1280x650 it ran into Next)
+  const readEl = root.querySelector('.tk-read')
+  function reserve() {
+    readEl.style.minHeight = ''
+    if (!readEl.offsetParent) return   // hidden (a phone's vertical line)
+    const keep = { t: rv.textContent, c: rv.className, h: rh.textContent }
+    let most = 0
+    stops.forEach((s) => {
+      rv.className = 'rv'
+      rv.textContent = num ? CeresNav.fill(D.readout, { a: +s.id, b: D.max - +s.id }) : s.label
+      rh.textContent = !num && s.hint ? s.hint : ''
+      most = Math.max(most, readEl.getBoundingClientRect().height)
+    })
+    rv.className = keep.c; rv.textContent = keep.t; rh.textContent = keep.h
+    readEl.style.minHeight = Math.ceil(most) + 'px'
+  }
+  // and the stops keep the height of a chosen label, which is set in bold and can take one more line (8.4b)
+  const stopsEl = root.querySelector('.tk-stops')
+  function reserveStops() {
+    stopsEl.style.minHeight = ''
+    root.classList.add('allbold')
+    const h = stopsEl.getBoundingClientRect().height
+    root.classList.remove('allbold')
+    stopsEl.style.minHeight = Math.ceil(h) + 'px'
+  }
+  function fit() {
+    const o = ui.obj
+    for (let lv = 0; lv <= 3; lv++) {
+      root.classList.remove('d1', 'd2', 'd3')
+      for (let k = 1; k <= lv; k++) root.classList.add('d' + k)
+      reserve(); reserveStops()
+      measure()
+      if (o.scrollHeight <= o.clientHeight + 1 && root.scrollHeight <= root.clientHeight + 1) return
+    }
+  }
+  fit()
+  let rt = 0
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(fit, 80) })
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit)
+})()
+</script>
+</body>
+</html>
