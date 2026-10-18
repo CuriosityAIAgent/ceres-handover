@@ -66,7 +66,7 @@
     { id: 'not-hnw', label: 'Not for HNW', gloss: 'Not needed in an HNW banker' },
     { id: 'nice', label: 'Nice to have', gloss: 'Good, but we would win without it' },
     { id: 'core', label: 'Core', gloss: 'Every HNW banker needs it' },
-    { id: 'critical', label: 'Critical to winning', gloss: 'Why clients would choose them' },
+    { id: 'critical', label: 'Critical to winning', gloss: 'What sets the best HNW bankers apart' },
   ]
   // Interface lines shared by every pile sort (deck, "The piles").
   const PILE_UI = {
@@ -122,7 +122,7 @@
   const LEDGER_ROWS = [
     { id: 'jpm', label: 'J.P. Morgan' },
     { id: 'champion', label: 'The national champion bank', hint: "Your market's leading local bank" },
-    { id: 'global', label: 'Another global or private bank', hint: "Not your market's leading bank" },
+    { id: 'global', label: 'Another bank', hint: 'Global, private or another local bank' },
     { id: 'independent', label: 'An independent adviser or family office', hint: 'Includes external asset managers' },
     { id: 'broker', label: 'An online broker', hint: 'Including trading apps' },
     { id: 'neobank', label: 'A digital bank', hint: 'A bank that is only an app' },
@@ -250,7 +250,7 @@
         store: 'tradeAdvice', mode: 'one', shuffle: true, layout: 'row', tradeoff: true, missing: 'Tap one',
         options: [
           { id: 'banker', label: 'Their banker' },   // v2: no "alone", which made the banker sound like the weaker option
-          { id: 'central-team', label: 'A central investment team', hint: 'An investments centre of excellence' },   // the same team as 2.3's part 3 and the 2.5 and 4.3 hints
+          { id: 'central-team', label: 'A central investment team', hint: "Investment specialists who serve many bankers' clients" },   // the same team as 2.3's part 3 and the 2.5 and 4.3 hints
         ],
       },
     },
@@ -263,7 +263,7 @@
     {
       id: '2.1', kind: 'question', template: 'text', chapter: 'II', title: 'What drew clients to J.P. Morgan: three reasons',
       origin: 'Adam', originText: "Adam's review (15 Oct): his counter option, leading section 2", min: 2.5,
-      bridge: 'J.P. Morgan has an industry-leading platform to cover HNW clients.',
+      bridge: 'Picture it five years after launch. J.P. Morgan has an industry-leading platform to cover HNW clients.',
       question: 'When those clients are asked what drew them to J.P. Morgan, they consistently say:',
       instruction: 'Write a few short sentences for each, up to the length of a tweet.', notes: [],
       docHow: 'Three answers, numbered 1 to 3, each a few short sentences of up to 280 characters (the length of a tweet). On screen they sit as three client quotes, each with a live character count.',
@@ -379,9 +379,9 @@
               { id: 'desk', label: 'An execution desk', only: ['execute'] },
               { id: 'banker', label: 'Their banker', only: ['execute'] },
               { id: 'banker-alone', label: 'Their banker alone', only: ['engage', 'entrust'] },
-              { id: 'central', label: 'Their banker, backed by a central investment team', hint: 'An investments centre of excellence', only: ['engage', 'entrust'] },
+              { id: 'central', label: 'Their banker, backed by a central investment team', hint: 'Works behind the banker', only: ['engage', 'entrust'] },
               { id: 'central-direct', label: 'The central investment team directly', only: ['engage', 'entrust'] },
-              { id: 'investor', label: 'An investment specialist resource alongside the banker', only: ['engage', 'entrust'] },   // Chris, 15 Oct: not "dedicated Investor"
+              { id: 'investor', label: 'An investment specialist resource alongside the banker', hint: 'Joins client meetings', only: ['engage', 'entrust'] },   // Chris, 15 Oct: not "dedicated Investor"
             ],
           },
         ],
@@ -565,7 +565,7 @@
           { id: 'safety', label: 'The strength and safety of J.P. Morgan' },
           { id: 'performance', label: 'Better investment performance' },
           { id: 'alternatives', label: 'Access to alternatives', hint: 'Private markets and hedge funds' },
-          { id: 'specialists', label: 'Specialists on call', hint: 'Tax, estate and lending experts' },
+          { id: 'specialists', label: 'Specialists on call', hint: 'Tax and cross-border experts' },
           { id: 'lending', label: 'Lending against their portfolio' },
           { id: 'banker', label: 'A senior banker who knows the family' },
           { id: 'multi-country', label: 'Accounts in more than one country' },
@@ -593,7 +593,7 @@
           { id: 'brand', label: 'The J.P. Morgan brand' },
           { id: 'leaders', label: 'Access to senior leaders' },
           { id: 'first-look', label: 'First look at exclusive investments', hint: 'Co-investments and private deals' },
-          { id: 'calls-first', label: 'A banker who calls first', hint: 'Calls before the client asks, and remembers the details' },
+          { id: 'calls-first', label: 'A banker who calls first', hint: 'Before the client asks' },
           { id: 'next-gen', label: 'Programmes for the next generation', hint: 'Heirs and family members' },
         ],
         sample: ['calls-first', 'meetings', 'leaders', 'first-look', 'intellectual-capital', 'brand', 'next-gen', 'events', 'offices', 'gifts'],
@@ -773,7 +773,7 @@
         store: 'targetClient', mode: 'one', shuffle: true, missing: 'Tap one', look: 'ledger',
         options: [
           { id: 'champion', label: 'The national champion bank' },
-          { id: 'global', label: 'Another global or private bank' },
+          { id: 'global', label: 'Another bank', hint: 'Global, private or another local bank' },
           { id: 'independent', label: 'An independent adviser or family office' },
           { id: 'broker', label: 'An online broker' },
           { id: 'neobank', label: 'A digital bank' },
@@ -954,7 +954,7 @@
     {
       id: '6.2b', kind: 'followup', template: 'track', chapter: 'VI', parent: '6.2', title: 'How far away the banker can be',
       origin: 'Adam', originText: 'email; 6:59; hub stop Added', min: 0.25,
-      bridge: 'A last question, about distance.',
+      bridge: 'One more, about distance.',
       question: 'How far from the client can the banker be based and still serve them well?',
       instruction: 'Tap one.', notes: [],
       next: 'Next', rule: 'Tap one',
@@ -1040,20 +1040,20 @@
     /* ============================== VII · Digital and AI */
     { id: 'break-VII', kind: 'break', template: 'break', chapter: 'VII', title: 'Chapter break', origin: 'Added', originText: '§2.5 chapter breaks', min: 0.12, next: 'Next', rule: null, data: {} },
     {
-      id: '7.1', kind: 'question', template: 'track', chapter: 'VII', title: 'Contact without a banker',
+      id: '7.1', kind: 'question', template: 'track', chapter: 'VII', title: 'Requests handled without a banker',
       origin: 'Haresh', originText: 'Haresh: "how much of it should be digital-first"', min: 0.35,
       // v2: "will", not "can": nearly all contact could be digital, so "can" would bunch the answers high
-      question: "Three years after launch, how much of a client's contact with us will happen without a banker?",
+      question: "Three years after launch, what share of a client's requests and transactions will be handled without a banker?",
       instruction: 'Tap the line to set your answer.',
-      notes: ['JPOI, web and self-service. A video call with a banker counts as banker contact.'],
+      notes: ['Count payments, trades, documents and questions, not log-ins. JPOI, the web and the service team count as without a banker.'],
       // the generated line ("from 0% to 100% (App and web ↔ With a banker)") reads as if 0% were all app and web
-      docHow: 'They pick a point from 0% to 100%: the share of contact that happens without a banker. The screen shows the split, such as 70% JPOI and web, 30% with a banker.',
+      docHow: 'They pick a point from 0% to 100%: the share of requests and transactions handled without a banker. The screen shows the split, such as 70% without a banker, 30% with a banker.',
       next: 'Next', rule: 'Tap the line',
       data: {
         store: 'digitalShare', numeric: true, min: 0, max: 100, step: 10,
         stops: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => ({ id: String(v), label: v + '%' })),
-        readout: '{a}% JPOI and web · {b}% with a banker',
-        ends: ['JPOI and web', 'With a banker'],   // the split skin (stretch)
+        readout: '{a}% without a banker · {b}% with a banker',
+        ends: ['Without a banker', 'With a banker'],   // the split skin (stretch)
       },
     },
     {
@@ -1191,10 +1191,10 @@
       },
     },
     {
-      id: '8.1a', kind: 'followup', template: 'stamp', chapter: 'VIII', parent: '8.1', title: 'Pay for only one', stage: true,
+      id: '8.1a', kind: 'followup', template: 'stamp', chapter: 'VIII', parent: '8.1', title: 'Only one change', stage: true,
       origin: 'Added', originText: 'draft C F1.one', min: 0.3,
-      bridge: "We can't fund everything.",
-      question: 'If we could pay for only one of these, which one?',
+      bridge: "We can't do everything at once.",
+      question: 'If we could make only one of these changes, which one?',
       instruction: 'Tap one line.', notes: [],
       previewCondition: 'Shows only if two or more cards are stamped Do it or Pilot it.',
       next: 'Next', rule: 'Tap one line',
@@ -1304,8 +1304,8 @@
           { id: '1', label: '1 year' },
           { id: '2', label: '2 years' },
           { id: '3', label: '3 years' },
-          { id: '5', label: '5 years' },
-          { id: 'always', label: 'As long as the client stays' },
+          { id: '4-5', label: '4-5 years' },
+          { id: '5+', label: 'More than 5 years' },
         ],
       },
     },
@@ -1343,18 +1343,18 @@
       },
     },
     {
-      id: '9.2', kind: 'question', template: 'stamp', chapter: 'IX', title: 'Where J.P. Morgan is today on each',
+      id: '9.2', kind: 'question', template: 'stamp', chapter: 'IX', title: 'Where the IPB is today on each',
       origin: 'Added', originText: '1:38; draft C T2', min: 1.0,
-      question: 'Where does J.P. Morgan stand on each of these today?',
+      question: 'Where does the IPB stand on each of these today?',
       instruction: 'Stamp each card. 10 cards.',
-      notes: ['Answer for the IPB as a whole.'],
+      notes: [],
       next: 'Next', rule: 'Stamp all 10 cards',
       data: {
         store: 'ready', skin: 'readiness', shuffle: true, seed: 2920, missing: 'Stamp {n} more',
         stamps: [
           { id: 'ready', label: 'Ready now', impression: 'READY', glyph: 'tick' },
           { id: 'fixable', label: 'Fixable within a year', impression: 'WITHIN A YEAR', glyph: 'half' },
-          { id: 'gap', label: 'A real gap', impression: 'GAP', glyph: 'cross' },
+          { id: 'gap', label: 'Needs more than a year', impression: 'MORE THAN A YEAR', glyph: 'cross' },
         ],
         cards: WIN_BLOCKS,   // the ten 9.1 blocks, same labels and hints, fresh shuffle
       },
@@ -1395,7 +1395,8 @@
       origin: 'Added', originText: 'draft A IX.5', min: 0.2,
       bridge: 'This will take investment.',
       question: 'How many years would you give the HNW business to break even?',
-      instruction: 'Tap one.', notes: [],
+      instruction: 'Tap one.',
+      notes: ['Break even means the first full year in which revenue covers all costs, bankers and technology included.'],
       next: 'Next', rule: 'Tap one',
       data: {
         store: 'breakeven', missing: 'Tap one',
